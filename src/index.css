@@ -128,3 +128,16 @@
     @apply font-sans;
     }
 }
+
+@media print {
+  aside, header, .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body {
+    background-color: white !important;
+  }
+}

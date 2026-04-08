@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AuditWorkspace from './components/AuditWorkspace';
 import NonConformityList from './components/NonConformityList';
+import Reports from './components/Reports';
 import { Toaster } from '@/components/ui/sonner';
 import { db, auth } from './lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -99,6 +100,8 @@ export default function App() {
         return <AuditWorkspace auditContext={activeAudit} />;
       case 'nc':
         return <NonConformityList />;
+      case 'reports':
+        return <Reports />;
       default:
         return <Dashboard onStartAudit={handleStartAudit} />;
     }
