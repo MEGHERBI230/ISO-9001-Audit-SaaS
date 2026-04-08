@@ -1,0 +1,193 @@
+{
+  "1_prd": {
+    "product_name": "ISO 9001 Audit SaaS",
+    "vision": "Digitaliser et simplifier le processus d'audit ISO 9001 pour les entreprises de toutes tailles, en assurant une traçabilité totale et une conformité rigoureuse à l'ISO 19011.",
+    "target_audience": ["Responsables Qualité", "Auditeurs Internes/Externes", "Direction Générale"],
+    "key_features": [
+      "Gestion multi-tenant et multi-sites",
+      "Checklist interactive basée sur les clauses 4 à 10 de l'ISO 9001:2015",
+      "Gestion centralisée des preuves avec upload drag & drop",
+      "Workflow complet d'audit : Planification -> Exécution -> Rapport -> Plan d'actions",
+      "Tableaux de bord de maturité et de préparation à la certification",
+      "Génération automatique de rapports de synthèse pour la Direction"
+    ]
+  },
+  "2_personas_and_user_journeys": {
+    "personas": [
+      {
+        "role": "Auditeur Lead",
+        "goals": "Réaliser des audits structurés, collecter des preuves objectives, générer des rapports précis.",
+        "pain_points": "Saisie manuelle fastidieuse, difficulté à lier les preuves aux exigences, suivi des actions correctives."
+      },
+      {
+        "role": "Responsable Qualité",
+        "goals": "Maintenir le SMQ, préparer les audits de certification, suivre les non-conformités.",
+        "pain_points": "Manque de visibilité en temps réel sur la conformité globale."
+      }
+    ],
+    "user_journey_audit_execution": [
+      "L'auditeur sélectionne une clause dans la grille.",
+      "Il répond aux questions d'audit et saisit ses constats.",
+      "Il téléverse les preuves (fichiers/dossiers) directement liées à l'exigence.",
+      "Il attribue une cotation (C, NCm, NCM, etc.).",
+      "Le système met à jour le score de maturité en temps réel."
+    ]
+  },
+  "3_user_stories_with_acceptance_criteria": [
+    {
+      "id": "US1",
+      "title": "Gestion des preuves",
+      "description": "En tant qu'auditeur, je veux pouvoir lier des fichiers ou des dossiers à une exigence spécifique pour prouver la conformité.",
+      "acceptance_criteria": [
+        "Support du drag & drop pour fichiers et dossiers.",
+        "Lien N:N entre preuves et exigences.",
+        "Visualisation immédiate des preuves liées dans la vue d'audit."
+      ]
+    },
+    {
+      "id": "US2",
+      "title": "Génération de rapport",
+      "description": "En tant qu'auditeur, je veux générer un rapport PDF pour la Direction incluant une synthèse graphique et la liste des écarts.",
+      "acceptance_criteria": [
+        "Inclusion d'un résumé exécutif.",
+        "Statistiques par clause (graphiques).",
+        "Liste détaillée des NC, OA et OBS."
+      ]
+    }
+  ],
+  "4_information_architecture_and_screens": {
+    "sitemap": [
+      "Dashboard (Vue globale)",
+      "Audits (Liste et Planification)",
+      "Audit Workspace (Grille des clauses, Saisie des constats, Preuves)",
+      "Non-Conformités (Suivi des actions)",
+      "Référentiels (Gestion des checklists)",
+      "Paramètres (Tenants, Utilisateurs, RBAC)"
+    ]
+  },
+  "5_data_model_erd_text": "Tenant (1:N) User, Audit (1:N) Finding, Finding (N:N) Evidence, Finding (1:1) NonConformity, Audit (1:N) NonConformity.",
+  "6_database_schema_sql_postgresql": "CREATE TABLE tenants (...); CREATE TABLE audits (...); CREATE TABLE findings (...); CREATE TABLE evidences (...); CREATE TABLE non_conformities (...);",
+  "7_api_design_openapi_outline": {
+    "endpoints": [
+      "GET /api/audits",
+      "POST /api/audits/{id}/findings",
+      "POST /api/audits/{id}/evidence/upload",
+      "GET /api/reports/generate/{auditId}"
+    ]
+  },
+  "8_file_upload_and_storage_design": {
+    "strategy": "Stockage objet (S3/Firebase Storage) pour les fichiers, métadonnées en base de données (Firestore/Postgres).",
+    "security": "URLs signées à durée limitée, scan antivirus à l'upload, chiffrement AES-256."
+  },
+  "9_security_and_compliance": {
+    "rbac_roles": ["Admin", "Auditeur", "Lecteur", "Pilote de Processus"],
+    "gdpr": "Chiffrement des données personnelles, politique de rétention configurable, export des données utilisateur."
+  },
+  "10_audit_methodology_alignment_iso19011": {
+    "principles": ["Intégrité", "Présentation impartiale", "Conscience professionnelle", "Confidentialité", "Indépendance", "Approche fondée sur les preuves"],
+    "workflow": "Planification -> Ouverture -> Collecte d'informations -> Constats -> Conclusions -> Clôture."
+  },
+  "11_reporting_docx_pdf_template_outline": {
+    "sections": [
+      "Page de garde",
+      "Sommaire",
+      "Résumé exécutif",
+      "Périmètre et objectifs",
+      "Synthèse de la performance du SMQ",
+      "Détail des constats (NC, OA, OBS)",
+      "Recommandations de l'auditeur",
+      "Annexes (Liste des preuves)"
+    ]
+  },
+  "12_seed_reference_library_structure": {
+    "standard_name": "ISO 9001",
+    "standard_version": "2015",
+    "effective_date": "2015-09-15",
+    "clauses": [
+      {
+        "number": "4",
+        "title": "Contexte de l'organisme",
+        "sub_clauses": [
+          {
+            "number": "4.1",
+            "title": "Compréhension de l'organisme et de son contexte",
+            "exigences": [
+              {
+                "id": "4.1.1",
+                "text": "L'organisme doit déterminer les enjeux externes et internes pertinents...",
+                "questions": ["Quels sont les enjeux internes et externes ?", "Comment sont-ils revus ?"],
+                "expected_evidence": ["Analyse SWOT", "Analyse PESTEL", "PV de revue de direction"]
+              }
+            ]
+          },
+          {
+            "number": "4.2",
+            "title": "Compréhension des besoins et des attentes des parties intéressées",
+            "exigences": [
+              {
+                "id": "4.2.1",
+                "text": "L'organisme doit déterminer les parties intéressées et leurs exigences...",
+                "questions": ["Qui sont les parties intéressées ?", "Quelles sont leurs exigences ?"],
+                "expected_evidence": ["Cartographie des parties intéressées", "Registre des exigences"]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "number": "5",
+        "title": "Leadership",
+        "sub_clauses": [
+          {
+            "number": "5.1",
+            "title": "Leadership et engagement",
+            "exigences": [
+              {
+                "id": "5.1.1",
+                "text": "La direction doit démontrer son leadership et son engagement...",
+                "questions": ["Comment la direction s'implique-t-elle ?", "La politique qualité est-elle alignée ?"],
+                "expected_evidence": ["PV de revue de direction", "Preuves de communication de la direction"]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "number": "6",
+        "title": "Planification",
+        "sub_clauses": [
+          {
+            "number": "6.1",
+            "title": "Actions à mettre en œuvre face aux risques et opportunités",
+            "exigences": [
+              {
+                "id": "6.1.1",
+                "text": "L'organisme doit planifier les actions à mettre en œuvre face aux risques...",
+                "questions": ["Quels sont les risques identifiés ?", "Quelles actions sont prévues ?"],
+                "expected_evidence": ["Registre des risques et opportunités", "Plan d'actions"]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "number": "9",
+        "title": "Évaluation des performances",
+        "sub_clauses": [
+          {
+            "number": "9.2",
+            "title": "Audit interne",
+            "exigences": [
+              {
+                "id": "9.2.1",
+                "text": "L'organisme doit réaliser des audits internes à des intervalles planifiés...",
+                "questions": ["Quel est le programme d'audit ?", "Les auditeurs sont-ils impartiaux ?"],
+                "expected_evidence": ["Programme d'audit annuel", "Rapports d'audit", "Preuves de compétence des auditeurs"]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
