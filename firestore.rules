@@ -1,142 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: tenants
-    // Fields: name (string), createdAt (timestamp)
-    //
-    // Collection: users
-    // Fields: tenantId (string), email (string), role (string), name (string)
-    //
-    // Collection: audits
-    // Fields: tenantId (string), name (string), status (string), startDate (timestamp), endDate (timestamp), leadAuditorId (string)
-    //
-    // Collection: findings
-    // Fields: auditId (string), exigenceId (string), status (string), constat (string), riskLevel (string), updatedAt (timestamp)
-    //
-    // Collection: evidences
-    // Fields: auditId (string), name (string), fileUrl (string), uploadedBy (string), uploadedAt (timestamp)
-    //
-    // Collection: non_conformities
-    // Fields: auditId (string), findingId (string), type (string), status (string), dueDate (timestamp), responsibleId (string)
-    //
-    // ===============================================================
-
+    
     // ===============================================================
     // Helper Functions
     // ===============================================================
-
     function isAuthenticated() {
       return request.auth != null;
     }
-
+    
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "megherbinabil23@gmail.com" && request.auth.token.email_verified == true));
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isMemberOfTenant(tenantId) {
-      return isAuthenticated() && getUserData().tenantId == tenantId;
-    }
-
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
-    }
-
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-    }
-
-    function isValidUrl(url) {
-      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
-    }
-
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
-
-    function isValidUser(data) {
-      return hasOnlyAllowedFields(['tenantId', 'email', 'role', 'name']) &&
-             data.tenantId is string && data.tenantId.size() > 0 &&
-             data.email is string && isValidEmail(data.email) &&
-             data.role in ['admin', 'auditor', 'reader', 'process_owner'] &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100;
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.createdBy;
     }
 
     function isValidAudit(data) {
-      return hasOnlyAllowedFields(['tenantId', 'name', 'status', 'startDate', 'endDate', 'leadAuditorId']) &&
-             data.tenantId is string && data.name is string && data.name.size() < 200 &&
-             data.status in ['planned', 'in-progress', 'completed', 'closed'] &&
-             data.startDate is timestamp && data.endDate is timestamp &&
-             data.leadAuditorId is string;
+      return data.companyName is string && data.companyName.size() > 0 && data.companyName.size() < 200 &&
+             data.auditorName is string && data.auditorName.size() > 0 &&
+             data.createdBy == request.auth.uid;
     }
 
     function isValidFinding(data) {
-      return hasOnlyAllowedFields(['auditId', 'exigenceId', 'status', 'constat', 'riskLevel', 'updatedAt']) &&
-             data.auditId is string && data.exigenceId is string &&
-             data.status in ['C', 'OA', 'OBS', 'NCm', 'NCM', 'NA'] &&
-             data.constat is string && data.constat.size() < 5000 &&
-             data.riskLevel in ['low', 'medium', 'high'] &&
-             data.updatedAt is timestamp;
+      return data.auditId is string &&
+             data.requirementId is string &&
+             data.rating is string &&
+             data.riskLevel in ['low', 'medium', 'high'];
     }
 
     // ===============================================================
     // Rules
     // ===============================================================
 
-    match /tenants/{tenantId} {
-      allow read: if isMemberOfTenant(tenantId) || isAdmin();
-      allow create, update: if isAdmin();
-    }
-
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
-    }
-
     match /audits/{auditId} {
-      allow read: if isAuthenticated() && isMemberOfTenant(resource.data.tenantId);
-      allow create: if isAuthenticated() && isValidAudit(request.resource.data) && isMemberOfTenant(request.resource.data.tenantId);
-      allow update: if isAuthenticated() && isValidAudit(request.resource.data) && isMemberOfTenant(resource.data.tenantId);
-      allow delete: if isAdmin();
-    }
+      allow read: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
+      allow create: if isAuthenticated() && isValidAudit(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidAudit(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
 
-    match /findings/{findingId} {
-      allow read: if isAuthenticated(); // Simplified, ideally check audit's tenant
-      allow create, update: if isAuthenticated() && isValidFinding(request.resource.data);
+      match /findings/{findingId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isValidFinding(request.resource.data);
+      }
     }
-
-    match /evidences/{evidenceId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && hasRequiredFields(['auditId', 'name', 'fileUrl', 'uploadedBy', 'uploadedAt']) && isValidUrl(request.resource.data.fileUrl);
-    }
-
-    match /non_conformities/{ncId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-    }
-
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
+    
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
     }
   }
 }

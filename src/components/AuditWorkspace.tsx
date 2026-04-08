@@ -51,17 +51,70 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ISO_9001_2015_STRUCTURE, RATING_LEGEND } from '@/src/constants';
+import { STANDARDS, RATING_LEGEND } from '@/src/constants';
 import { FindingStatus } from '@/src/types';
 import { cn } from '@/lib/utils';
+import { db } from '../lib/firebase';
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, query } from 'firebase/firestore';
+import { toast } from 'sonner';
 
-export default function AuditWorkspace() {
+export default function AuditWorkspace({ auditContext }: { auditContext?: any }) {
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [expandedClauses, setExpandedClauses] = React.useState<string[]>(['c4']);
+  const [expandedClauses, setExpandedClauses] = React.useState<string[]>([]);
   const [selectedExigence, setSelectedExigence] = React.useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [findings, setFindings] = React.useState<Record<string, any>>({});
+  const [currentFinding, setCurrentFinding] = React.useState({
+    rating: 'C',
+    riskLevel: 'low',
+    comment: ''
+  });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const activeStandard = STANDARDS.find(s => s.id === auditContext?.standardId) || STANDARDS[0];
+  const structure = activeStandard.structure;
+
+  React.useEffect(() => {
+    if (structure.length > 0) {
+      setExpandedClauses([structure[0].id]);
+    }
+  }, [activeStandard.id]);
+
+  React.useEffect(() => {
+    if (!auditContext?.id) return;
+
+    const q = query(collection(db, 'audits', auditContext.id, 'findings'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const findingsMap: Record<string, any> = {};
+      snapshot.forEach((doc) => {
+        findingsMap[doc.data().requirementId] = { id: doc.id, ...doc.data() };
+      });
+      setFindings(findingsMap);
+    }, (error) => {
+      console.error("Error fetching findings:", error);
+    });
+
+    return () => unsubscribe();
+  }, [auditContext?.id]);
+
+  const handleSaveFinding = async () => {
+    if (!auditContext || !selectedExigence) return;
+
+    try {
+      const findingId = `${auditContext.id}_${selectedExigence.number.replace(/\./g, '_')}`;
+      await setDoc(doc(db, 'audits', auditContext.id, 'findings', findingId), {
+        auditId: auditContext.id,
+        requirementId: selectedExigence.number,
+        ...currentFinding,
+        updatedAt: serverTimestamp()
+      });
+      toast.success("Constat enregistré");
+    } catch (error) {
+      console.error("Error saving finding:", error);
+      toast.error("Erreur lors de l'enregistrement");
+    }
+  };
 
   const toggleClause = (id: string) => {
     setExpandedClauses(prev => 
@@ -102,8 +155,14 @@ export default function AuditWorkspace() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Audit Interne Qualité 2026</h1>
-          <p className="text-muted-foreground text-xs">Périmètre: Siège & Production | Référentiel: ISO 9001:2015</p>
+          <h1 className="text-xl font-bold tracking-tight">
+            {auditContext ? `Audit: ${auditContext.companyName}` : "Audit Interne"}
+          </h1>
+          <p className="text-muted-foreground text-xs">
+            {auditContext 
+              ? `Norme: ${activeStandard.name} | Structure: ${auditContext.structure} | Auditeur: ${auditContext.auditorName}`
+              : "Périmètre: Siège & Production | Référentiel: ISO 9001:2015"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
@@ -148,8 +207,7 @@ export default function AuditWorkspace() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* ... rest of table ... */}
-            {ISO_9001_2015_STRUCTURE.map((clause) => (
+            {structure.map((clause) => (
               <React.Fragment key={clause.id}>
                 <TableRow 
                   className="bg-muted/30 cursor-pointer hover:bg-muted/50"
@@ -175,32 +233,65 @@ export default function AuditWorkspace() {
                       <TableCell></TableCell>
                     </TableRow>
                     
-                    {sub.exigences.map((ex) => (
-                      <TableRow key={ex.id} className="hover:bg-accent/50">
-                        <TableCell className="pl-12 text-xs text-muted-foreground">{ex.number}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="font-medium">{ex.title}</div>
-                            <div className="text-sm text-muted-foreground">{ex.question}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200">
-                            Conforme
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Paperclip className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">3 fichiers</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Dialog>
-                            <DialogTrigger render={<Button variant="ghost" size="sm" onClick={() => setSelectedExigence(ex)} />}>
-                              Éditer
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col pt-3" showCloseButton={false}>
+                      {sub.exigences.map((ex) => {
+                        const finding = findings[ex.number];
+                        const ratingInfo = RATING_LEGEND.find(r => r.code === finding?.rating);
+                        
+                        return (
+                          <TableRow key={ex.id} className="hover:bg-accent/50">
+                            <TableCell className="pl-12 text-xs text-muted-foreground">{ex.number}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium">{ex.title}</div>
+                                <div className="text-sm text-muted-foreground">{ex.question}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {finding ? (
+                                <Badge variant="outline" className={cn(ratingInfo?.color.replace('bg-', 'text-').replace('rounded-full', ''), "border-current")}>
+                                  {ratingInfo?.label || finding.rating}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="opacity-50">
+                                  À évaluer
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {finding?.files?.length || 0} fichier(s)
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Dialog>
+                                <DialogTrigger render={
+                                  <Button 
+                                    variant={finding ? "ghost" : "default"} 
+                                    size="sm" 
+                                    onClick={() => {
+                                      setSelectedExigence(ex);
+                                      if (finding) {
+                                        setCurrentFinding({
+                                          rating: finding.rating,
+                                          riskLevel: finding.riskLevel,
+                                          comment: finding.comment
+                                        });
+                                      } else {
+                                        setCurrentFinding({
+                                          rating: 'C',
+                                          riskLevel: 'low',
+                                          comment: ''
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {finding ? 'Éditer' : 'Enregistrer'}
+                                  </Button>
+                                } />
+                                <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col pt-3" showCloseButton={false}>
                               <DialogHeader className="pb-1 space-y-0">
                                 <DialogTitle className="text-lg leading-tight">Saisie du constat - {ex.number}</DialogTitle>
                                 <DialogDescription className="text-[10px] leading-tight opacity-80">{ex.title}</DialogDescription>
@@ -218,7 +309,10 @@ export default function AuditWorkspace() {
                                   <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-0.5">
                                       <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Cotation</Label>
-                                      <Select defaultValue="C">
+                                      <Select 
+                                        defaultValue="C" 
+                                        onValueChange={(v) => setCurrentFinding({...currentFinding, rating: v})}
+                                      >
                                         <SelectTrigger className="w-full">
                                           <SelectValue />
                                         </SelectTrigger>
@@ -236,7 +330,10 @@ export default function AuditWorkspace() {
                                     </div>
                                     <div className="space-y-0.5">
                                       <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Niveau de risque</Label>
-                                      <Select defaultValue="low">
+                                      <Select 
+                                        defaultValue="low"
+                                        onValueChange={(v) => setCurrentFinding({...currentFinding, riskLevel: v})}
+                                      >
                                         <SelectTrigger className="w-full">
                                           <SelectValue />
                                         </SelectTrigger>
@@ -254,6 +351,8 @@ export default function AuditWorkspace() {
                                     <Textarea 
                                       placeholder="Décrivez vos observations, les entretiens réalisés et l'échantillonnage..." 
                                       className="min-h-[70px] text-xs resize-none"
+                                      value={currentFinding.comment}
+                                      onChange={(e) => setCurrentFinding({...currentFinding, comment: e.target.value})}
                                     />
                                   </div>
 
@@ -321,7 +420,7 @@ export default function AuditWorkspace() {
                                 <DialogClose render={<Button variant="outline" size="sm" />}>
                                   Annuler
                                 </DialogClose>
-                                <DialogClose render={<Button size="sm" />}>
+                                <DialogClose render={<Button size="sm" onClick={handleSaveFinding} />}>
                                   Enregistrer le constat
                                 </DialogClose>
                               </DialogFooter>
@@ -329,7 +428,8 @@ export default function AuditWorkspace() {
                           </Dialog>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                  })}
                   </React.Fragment>
                 ))}
               </React.Fragment>

@@ -1,89 +1,43 @@
 {
   "entities": {
-    "Tenant": {
-      "title": "Tenant",
-      "description": "Représente une entreprise cliente multi-sites.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Nom de l'entreprise" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "createdAt"]
-    },
-    "User": {
-      "title": "User",
-      "description": "Profil utilisateur avec rôle RBAC.",
-      "type": "object",
-      "properties": {
-        "tenantId": { "type": "string", "description": "ID du tenant associé" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["admin", "auditor", "reader", "process_owner"] },
-        "name": { "type": "string" }
-      },
-      "required": ["tenantId", "email", "role", "name"]
-    },
     "Audit": {
       "title": "Audit",
-      "description": "Un audit ISO 9001 planifié ou en cours.",
+      "description": "Represents an audit session for a company",
       "type": "object",
       "properties": {
-        "tenantId": { "type": "string" },
-        "name": { "type": "string" },
-        "status": { "type": "string", "enum": ["planned", "in-progress", "completed", "closed"] },
-        "startDate": { "type": "string", "format": "date" },
-        "endDate": { "type": "string", "format": "date" },
-        "leadAuditorId": { "type": "string" }
+        "companyName": { "type": "string", "description": "Name of the audited company" },
+        "structure": { "type": "string", "description": "Audited structure or department" },
+        "auditorName": { "type": "string", "description": "Name of the auditor" },
+        "date": { "type": "string", "format": "date", "description": "Date of the audit" },
+        "status": { "type": "string", "enum": ["draft", "completed"], "description": "Current status of the audit" },
+        "createdBy": { "type": "string", "description": "UID of the user who created the audit" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["tenantId", "name", "status", "startDate", "endDate", "leadAuditorId"]
+      "required": ["companyName", "auditorName", "date", "createdBy"]
     },
     "Finding": {
       "title": "Finding",
-      "description": "Constat d'audit lié à une exigence.",
+      "description": "An audit finding for a specific requirement",
       "type": "object",
       "properties": {
-        "auditId": { "type": "string" },
-        "exigenceId": { "type": "string" },
-        "status": { "type": "string", "enum": ["C", "OA", "OBS", "NCm", "NCM", "NA"] },
-        "constat": { "type": "string" },
+        "auditId": { "type": "string", "description": "Reference to the parent audit" },
+        "requirementId": { "type": "string", "description": "ID of the ISO requirement (e.g., 4.1.1)" },
+        "rating": { "type": "string", "description": "Rating code (C, OBS, etc.)" },
         "riskLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+        "comment": { "type": "string", "description": "Observation text" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["auditId", "exigenceId", "status", "constat", "riskLevel", "updatedAt"]
-    },
-    "Evidence": {
-      "title": "Evidence",
-      "description": "Preuve documentaire liée à un audit.",
-      "type": "object",
-      "properties": {
-        "auditId": { "type": "string" },
-        "name": { "type": "string" },
-        "fileUrl": { "type": "string", "format": "uri" },
-        "uploadedBy": { "type": "string" },
-        "uploadedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["auditId", "name", "fileUrl", "uploadedBy", "uploadedAt"]
-    },
-    "NonConformity": {
-      "title": "NonConformity",
-      "description": "Action corrective liée à un écart.",
-      "type": "object",
-      "properties": {
-        "auditId": { "type": "string" },
-        "findingId": { "type": "string" },
-        "type": { "type": "string", "enum": ["NCm", "NCM"] },
-        "status": { "type": "string", "enum": ["open", "in-progress", "verified", "closed"] },
-        "dueDate": { "type": "string", "format": "date" },
-        "responsibleId": { "type": "string" }
-      },
-      "required": ["auditId", "findingId", "type", "status", "dueDate", "responsibleId"]
+      "required": ["auditId", "requirementId", "rating"]
     }
   },
   "firestore": {
-    "/tenants/{tenantId}": { "schema": "Tenant", "description": "Données du tenant" },
-    "/users/{userId}": { "schema": "User", "description": "Profils utilisateurs" },
-    "/audits/{auditId}": { "schema": "Audit", "description": "Liste des audits" },
-    "/findings/{findingId}": { "schema": "Finding", "description": "Constats d'audit" },
-    "/evidences/{evidenceId}": { "schema": "Evidence", "description": "Preuves documentaires" },
-    "/non_conformities/{ncId}": { "schema": "NonConformity", "description": "Suivi des NC" }
+    "/audits/{auditId}": {
+      "schema": "Audit",
+      "description": "Collection of audits"
+    },
+    "/audits/{auditId}/findings/{findingId}": {
+      "schema": "Finding",
+      "description": "Findings for a specific audit"
+    }
   }
 }

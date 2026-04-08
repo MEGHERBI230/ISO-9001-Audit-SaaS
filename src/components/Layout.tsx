@@ -19,6 +19,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
+
 interface SidebarItemProps {
   icon: React.ElementType;
   label: string;
@@ -49,6 +52,11 @@ interface LayoutProps {
 
 export default function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const user = auth.currentUser;
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -66,12 +74,12 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
               <span>ISO Audit</span>
             </div>
             <Button 
-              variant="ghost" 
-              size="icon" 
-              className="lg:hidden"
+              variant="outline" 
+              size="sm" 
+              className="lg:hidden text-[10px] h-7 px-2"
               onClick={() => setIsSidebarOpen(false)}
             >
-              <X className="w-5 h-5" />
+              Fermer
             </Button>
           </div>
 
@@ -114,7 +122,11 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
           </ScrollArea>
 
           <div className="p-4 border-t">
-            <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+              onClick={handleLogout}
+            >
               <LogOut className="w-5 h-5" />
               Déconnexion
             </Button>
@@ -135,10 +147,14 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
           </Button>
           <div className="flex items-center gap-4">
             <div className="text-xs font-medium text-muted-foreground hidden sm:block">
-              Tenant: <span className="text-foreground">Acme Corp</span>
+              {user ? (
+                <>Utilisateur: <span className="text-foreground">{user.email}</span></>
+              ) : (
+                <span className="text-amber-500 font-semibold">Mode Démo (Non sauvegardé)</span>
+              )}
             </div>
             <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-              JD
+              {user?.email?.substring(0, 2).toUpperCase() || 'DM'}
             </div>
           </div>
         </header>
