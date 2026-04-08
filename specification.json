@@ -1,11 +1,11 @@
 {
   "1_prd": {
-    "product_name": "ISO 9001 Audit SaaS",
-    "vision": "Digitaliser et simplifier le processus d'audit ISO 9001 pour les entreprises de toutes tailles, en assurant une traçabilité totale et une conformité rigoureuse à l'ISO 19011.",
+    "product_name": "ISO Audit SaaS",
+    "vision": "Digitaliser et simplifier le processus d'audit multi-normes ISO pour les entreprises de toutes tailles, en assurant une traçabilité totale et une conformité rigoureuse à l'ISO 19011.",
     "target_audience": ["Responsables Qualité", "Auditeurs Internes/Externes", "Direction Générale"],
     "key_features": [
       "Gestion multi-tenant et multi-sites",
-      "Checklist interactive basée sur les clauses 4 à 10 de l'ISO 9001:2015",
+      "Checklist interactive basée sur les clauses des normes ISO",
       "Gestion centralisée des preuves avec upload drag & drop",
       "Workflow complet d'audit : Planification -> Exécution -> Rapport -> Plan d'actions",
       "Tableaux de bord de maturité et de préparation à la certification",

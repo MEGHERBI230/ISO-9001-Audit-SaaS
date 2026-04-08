@@ -114,7 +114,7 @@ export default function Dashboard({ onStartAudit }: { onStartAudit?: (data: any)
               <DialogHeader>
                 <DialogTitle>Créer un nouvel audit</DialogTitle>
                 <DialogDescription>
-                  Saisissez les informations de base pour commencer votre audit ISO 9001.
+                  Saisissez les informations de base pour commencer votre audit.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -238,7 +238,7 @@ export default function Dashboard({ onStartAudit }: { onStartAudit?: (data: any)
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Maturité par Clause ISO 9001</CardTitle>
+            <CardTitle>Maturité par Clause</CardTitle>
             <CardDescription>Niveau de conformité actuel</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">

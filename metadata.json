@@ -1,5 +1,5 @@
 {
-  "name": "ISO 9001 Audit SaaS",
-  "description": "A comprehensive SaaS for ISO 9001:2015 auditing, featuring multi-tenant management, evidence tracking, and automated reporting.",
+  "name": "ISO Audit SaaS",
+  "description": "A comprehensive SaaS for multi-standard ISO auditing, featuring multi-tenant management, evidence tracking, and automated reporting.",
   "requestFramePermissions": []
 }

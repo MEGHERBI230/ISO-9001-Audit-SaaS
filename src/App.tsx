@@ -117,7 +117,7 @@ export default function App() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center space-y-8">
         <div className="space-y-3">
           <h1 className="text-4xl font-extrabold tracking-tighter sm:text-5xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            ISO 9001 Audit SaaS
+            ISO Audit SaaS
           </h1>
           <p className="text-muted-foreground max-w-[500px] mx-auto text-sm sm:text-base">
             Gérez vos audits et vos conformités en toute simplicité. 
