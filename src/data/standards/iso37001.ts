@@ -1,6 +1,6 @@
 import { Clause } from '../../types';
 
-export const ISO_37301_2021: Clause[] = [
+export const ISO_37001_2016: Clause[] = [
   {
     id: 'c4',
     number: '4',
@@ -14,9 +14,9 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex4.1.1',
             number: '4.1.1',
-            title: 'Enjeux de conformité',
+            title: 'Enjeux anti-corruption',
             question: 'L’organisme a-t-il identifié les enjeux externes et internes pertinents ?',
-            expectedEvidence: ['Analyse contextuelle']
+            expectedEvidence: ['Analyse contextuelle anti-corruption']
           }
         ]
       },
@@ -42,8 +42,8 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex4.3.1',
             number: '4.3.1',
-            title: 'Périmètre du SMC',
-            question: 'Le domaine d’application du système de management de la conformité est-il défini ?',
+            title: 'Périmètre du SMAC',
+            question: 'Le domaine d’application du système de management anti-corruption est-il défini ?',
             expectedEvidence: ['Document de périmètre']
           }
         ]
@@ -51,42 +51,28 @@ export const ISO_37301_2021: Clause[] = [
       {
         id: 'sc4.4',
         number: '4.4',
-        title: 'Système de management de la conformité',
+        title: 'Système de management anti-corruption',
         exigences: [
           {
             id: 'ex4.4.1',
             number: '4.4.1',
-            title: 'Établissement du SMC',
-            question: 'L’organisme a-t-il établi un SMC conforme aux exigences ?',
-            expectedEvidence: ['Manuel de conformité']
+            title: 'Établissement du SMAC',
+            question: 'L’organisme a-t-il établi un SMAC conforme aux exigences ?',
+            expectedEvidence: ['Manuel anti-corruption']
           }
         ]
       },
       {
         id: 'sc4.5',
         number: '4.5',
-        title: 'Obligations de conformité',
+        title: 'Évaluation des risques de corruption',
         exigences: [
           {
             id: 'ex4.5.1',
             number: '4.5.1',
-            title: 'Identification des obligations',
-            question: 'Les obligations de conformité sont-elles identifiées et évaluées ?',
-            expectedEvidence: ['Registre des obligations de conformité']
-          }
-        ]
-      },
-      {
-        id: 'sc4.6',
-        number: '4.6',
-        title: 'Évaluation des risques de conformité',
-        exigences: [
-          {
-            id: 'ex4.6.1',
-            number: '4.6.1',
-            title: 'Analyse des risques',
-            question: 'L’organisme évalue-t-il régulièrement ses risques de conformité ?',
-            expectedEvidence: ['Cartographie des risques de conformité']
+            title: 'Analyse des risques de corruption',
+            question: 'L’organisme évalue-t-il régulièrement ses risques de corruption ?',
+            expectedEvidence: ['Cartographie des risques de corruption']
           }
         ]
       }
@@ -105,8 +91,15 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex5.1.1',
             number: '5.1.1',
-            title: 'Engagement de la direction',
-            question: 'La direction démontre-t-elle son leadership vis-à-vis du SMC ?',
+            title: 'Organe de gouvernance',
+            question: 'L’organe de gouvernance démontre-t-il son leadership envers le SMAC ?',
+            expectedEvidence: ['PV de conseil d’administration']
+          },
+          {
+            id: 'ex5.1.2',
+            number: '5.1.2',
+            title: 'Direction',
+            question: 'La direction démontre-t-elle son engagement envers le SMAC ?',
             expectedEvidence: ['PV de revue de direction']
           }
         ]
@@ -114,14 +107,14 @@ export const ISO_37301_2021: Clause[] = [
       {
         id: 'sc5.2',
         number: '5.2',
-        title: 'Politique de conformité',
+        title: 'Politique anti-corruption',
         exigences: [
           {
             id: 'ex5.2.1',
             number: '5.2.1',
             title: 'Établissement de la politique',
-            question: 'Une politique de conformité est-elle établie ?',
-            expectedEvidence: ['Politique de conformité signée']
+            question: 'Une politique anti-corruption est-elle établie ?',
+            expectedEvidence: ['Politique anti-corruption signée']
           }
         ]
       },
@@ -133,9 +126,9 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex5.3.1',
             number: '5.3.1',
-            title: 'Fonction conformité',
-            question: 'Une fonction conformité est-elle désignée avec les autorités nécessaires ?',
-            expectedEvidence: ['Lettre de nomination du Compliance Officer']
+            title: 'Fonction de conformité anti-corruption',
+            question: 'Une fonction de conformité anti-corruption est-elle désignée ?',
+            expectedEvidence: ['Lettre de nomination']
           }
         ]
       }
@@ -155,36 +148,22 @@ export const ISO_37301_2021: Clause[] = [
             id: 'ex6.1.1',
             number: '6.1.1',
             title: 'Planification des actions',
-            question: 'L’organisme planifie-t-il des actions pour traiter les risques de conformité ?',
-            expectedEvidence: ['Plan d’actions de conformité']
+            question: 'L’organisme planifie-t-il des actions pour traiter les risques de corruption ?',
+            expectedEvidence: ['Plan d’actions anti-corruption']
           }
         ]
       },
       {
         id: 'sc6.2',
         number: '6.2',
-        title: 'Objectifs de conformité',
+        title: 'Objectifs anti-corruption',
         exigences: [
           {
             id: 'ex6.2.1',
             number: '6.2.1',
             title: 'Établissement des objectifs',
-            question: 'Des objectifs de conformité sont-ils établis ?',
-            expectedEvidence: ['Tableau de bord de conformité']
-          }
-        ]
-      },
-      {
-        id: 'sc6.3',
-        number: '6.3',
-        title: 'Planification des modifications',
-        exigences: [
-          {
-            id: 'ex6.3.1',
-            number: '6.3.1',
-            title: 'Maîtrise des changements',
-            question: 'Les changements du SMC sont-ils planifiés ?',
-            expectedEvidence: ['Registre des changements']
+            question: 'Des objectifs anti-corruption sont-ils établis ?',
+            expectedEvidence: ['Tableau de bord anti-corruption']
           }
         ]
       }
@@ -204,8 +183,8 @@ export const ISO_37301_2021: Clause[] = [
             id: 'ex7.1.1',
             number: '7.1.1',
             title: 'Mise à disposition des ressources',
-            question: 'L’organisme fournit-il les ressources nécessaires au SMC ?',
-            expectedEvidence: ['Budget conformité']
+            question: 'L’organisme fournit-il les ressources nécessaires au SMAC ?',
+            expectedEvidence: ['Budget anti-corruption']
           }
         ]
       },
@@ -217,8 +196,8 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex7.2.1',
             number: '7.2.1',
-            title: 'Formation du personnel',
-            question: 'Le personnel est-il compétent en matière de conformité ?',
+            title: 'Formation et compétences',
+            question: 'Le personnel est-il compétent et formé à la lutte contre la corruption ?',
             expectedEvidence: ['Plan de formation']
           }
         ]
@@ -231,8 +210,8 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex7.3.1',
             number: '7.3.1',
-            title: 'Culture de conformité',
-            question: 'Le personnel est-il sensibilisé aux enjeux de conformité ?',
+            title: 'Culture anti-corruption',
+            question: 'Le personnel est-il sensibilisé à la politique anti-corruption ?',
             expectedEvidence: ['Supports de sensibilisation']
           }
         ]
@@ -246,7 +225,7 @@ export const ISO_37301_2021: Clause[] = [
             id: 'ex7.4.1',
             number: '7.4.1',
             title: 'Processus de communication',
-            question: 'L’organisme a-t-il défini ses besoins en communication ?',
+            question: 'L’organisme communique-t-il sur sa politique anti-corruption ?',
             expectedEvidence: ['Plan de communication']
           }
         ]
@@ -281,7 +260,7 @@ export const ISO_37301_2021: Clause[] = [
             id: 'ex8.1.1',
             number: '8.1.1',
             title: 'Contrôles opérationnels',
-            question: 'L’organisme met-il en œuvre des contrôles pour ses obligations ?',
+            question: 'L’organisme met-il en œuvre des contrôles pour ses processus ?',
             expectedEvidence: ['Procédures de contrôle']
           }
         ]
@@ -289,41 +268,125 @@ export const ISO_37301_2021: Clause[] = [
       {
         id: 'sc8.2',
         number: '8.2',
-        title: 'Établissement de contrôles et de procédures',
+        title: 'Diligences raisonnables',
         exigences: [
           {
             id: 'ex8.2.1',
             number: '8.2.1',
-            title: 'Procédures de conformité',
-            question: 'Des procédures sont-elles établies pour assurer la conformité ?',
-            expectedEvidence: ['Manuel de procédures']
+            title: 'Due Diligence',
+            question: 'Des diligences raisonnables sont-elles exercées sur les partenaires et projets ?',
+            expectedEvidence: ['Rapports de due diligence']
           }
         ]
       },
       {
         id: 'sc8.3',
         number: '8.3',
-        title: 'Processus de signalement',
+        title: 'Contrôles financiers',
         exigences: [
           {
             id: 'ex8.3.1',
             number: '8.3.1',
-            title: 'Alerte professionnelle',
-            question: 'Un mécanisme de signalement des préoccupations est-il en place ?',
-            expectedEvidence: ['Procédure d’alerte / Whistleblowing']
+            title: 'Maîtrise financière',
+            question: 'Des contrôles financiers sont-ils en place pour prévenir la corruption ?',
+            expectedEvidence: ['Procédures financières']
           }
         ]
       },
       {
         id: 'sc8.4',
         number: '8.4',
-        title: 'Processus d’enquête',
+        title: 'Contrôles non financiers',
         exigences: [
           {
             id: 'ex8.4.1',
             number: '8.4.1',
-            title: 'Gestion des signalements',
-            question: 'L’organisme dispose-t-il d’un processus pour enquêter sur les signalements ?',
+            title: 'Maîtrise non financière',
+            question: 'Des contrôles non financiers sont-ils en place (achats, RH, etc.) ?',
+            expectedEvidence: ['Procédures d’achat']
+          }
+        ]
+      },
+      {
+        id: 'sc8.5',
+        number: '8.5',
+        title: 'Mise en œuvre des contrôles par les partenaires',
+        exigences: [
+          {
+            id: 'ex8.5.1',
+            number: '8.5.1',
+            title: 'Contrôles des partenaires',
+            question: 'L’organisme exige-t-il des contrôles anti-corruption de ses partenaires ?',
+            expectedEvidence: ['Clauses contractuelles']
+          }
+        ]
+      },
+      {
+        id: 'sc8.6',
+        number: '8.6',
+        title: 'Engagements anti-corruption',
+        exigences: [
+          {
+            id: 'ex8.6.1',
+            number: '8.6.1',
+            title: 'Engagements contractuels',
+            question: 'Les partenaires s’engagent-ils par écrit contre la corruption ?',
+            expectedEvidence: ['Contrats signés']
+          }
+        ]
+      },
+      {
+        id: 'sc8.7',
+        number: '8.7',
+        title: 'Cadeaux, marques d’hospitalité, dons et avantages similaires',
+        exigences: [
+          {
+            id: 'ex8.7.1',
+            number: '8.7.1',
+            title: 'Politique cadeaux',
+            question: 'Une politique encadrant les cadeaux et invitations est-elle en place ?',
+            expectedEvidence: ['Procédure cadeaux et invitations']
+          }
+        ]
+      },
+      {
+        id: 'sc8.8',
+        number: '8.8',
+        title: 'Gestion de l’insuffisance des contrôles anti-corruption',
+        exigences: [
+          {
+            id: 'ex8.8.1',
+            number: '8.8.1',
+            title: 'Traitement des failles',
+            question: 'L’organisme réagit-il en cas d’insuffisance des contrôles ?',
+            expectedEvidence: ['Rapports d’incident']
+          }
+        ]
+      },
+      {
+        id: 'sc8.9',
+        number: '8.9',
+        title: 'Signalement des préoccupations',
+        exigences: [
+          {
+            id: 'ex8.9.1',
+            number: '8.9.1',
+            title: 'Alerte professionnelle',
+            question: 'Un mécanisme de signalement (whistleblowing) est-il en place ?',
+            expectedEvidence: ['Procédure d’alerte']
+          }
+        ]
+      },
+      {
+        id: 'sc8.10',
+        number: '8.10',
+        title: 'Enquête et traitement de la corruption',
+        exigences: [
+          {
+            id: 'ex8.10.1',
+            number: '8.10.1',
+            title: 'Gestion des enquêtes',
+            question: 'L’organisme dispose-t-il d’un processus d’enquête interne ?',
             expectedEvidence: ['Rapports d’enquête']
           }
         ]
@@ -343,9 +406,9 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex9.1.1',
             number: '9.1.1',
-            title: 'Indicateurs de conformité',
-            question: 'L’organisme surveille-t-il sa performance de conformité ?',
-            expectedEvidence: ['Rapports de surveillance']
+            title: 'Indicateurs SMAC',
+            question: 'L’organisme surveille-t-il l’efficacité du SMAC ?',
+            expectedEvidence: ['Tableau de bord de performance']
           }
         ]
       },
@@ -357,8 +420,8 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex9.2.1',
             number: '9.2.1',
-            title: 'Programme d’audit interne',
-            question: 'Des audits internes de conformité sont-ils réalisés ?',
+            title: 'Programme d’audit',
+            question: 'Des audits internes anti-corruption sont-ils réalisés ?',
             expectedEvidence: ['Rapports d’audit']
           }
         ]
@@ -371,9 +434,23 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex9.3.1',
             number: '9.3.1',
-            title: 'Revue du SMC',
-            question: 'La direction revoit-elle le SMC ?',
+            title: 'Revue du SMAC',
+            question: 'La direction revoit-elle le SMAC ?',
             expectedEvidence: ['PV de revue de direction']
+          }
+        ]
+      },
+      {
+        id: 'sc9.4',
+        number: '9.4',
+        title: 'Revue par la fonction de conformité anti-corruption',
+        exigences: [
+          {
+            id: 'ex9.4.1',
+            number: '9.4.1',
+            title: 'Rapport de conformité',
+            question: 'La fonction conformité évalue-t-elle régulièrement le SMAC ?',
+            expectedEvidence: ['Rapport annuel de conformité']
           }
         ]
       }
@@ -393,7 +470,7 @@ export const ISO_37301_2021: Clause[] = [
             id: 'ex10.1.1',
             number: '10.1.1',
             title: 'Traitement des NC',
-            question: 'L’organisme réagit-il aux non-conformités de conformité ?',
+            question: 'L’organisme réagit-il aux non-conformités ?',
             expectedEvidence: ['Fiches d’actions correctives']
           }
         ]
@@ -406,8 +483,8 @@ export const ISO_37301_2021: Clause[] = [
           {
             id: 'ex10.2.1',
             number: '10.2.1',
-            title: 'Efficacité du SMC',
-            question: 'L’organisme améliore-t-il en continu le SMC ?',
+            title: 'Efficacité du SMAC',
+            question: 'L’organisme améliore-t-il en continu le SMAC ?',
             expectedEvidence: ['Plan d’amélioration']
           }
         ]

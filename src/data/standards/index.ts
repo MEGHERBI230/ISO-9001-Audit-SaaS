@@ -5,6 +5,7 @@ import { ISO_31000_2018 } from './iso31000';
 import { ISO_26000_2010 } from './iso26000';
 import { ISO_56002_2019 } from './iso56002';
 import { ISO_19011_2018 } from './iso19011';
+import { ISO_37001_2016 } from './iso37001';
 import { Clause } from '../../types';
 
 export interface Standard {
@@ -56,5 +57,11 @@ export const STANDARDS: Standard[] = [
     name: 'ISO 19011:2018',
     description: 'Lignes directrices pour l’audit',
     structure: ISO_19011_2018
+  },
+  {
+    id: 'iso37001',
+    name: 'ISO 37001:2016',
+    description: 'Systèmes de management anti-corruption',
+    structure: ISO_37001_2016
   }
 ];
