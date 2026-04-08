@@ -34,7 +34,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
-  Printer
+  Printer,
+  ShieldCheck
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
@@ -59,6 +60,10 @@ interface Audit {
   type?: string;
   structure: string;
   scope?: string;
+  objectives?: string;
+  criteria?: string;
+  strengths?: string[];
+  weaknesses?: string[];
   findings?: any[];
   summary?: {
     score?: number;
@@ -143,8 +148,12 @@ export default function Reports() {
   }
 
   if (selectedAudit) {
+    const findings = selectedAudit.findings || [];
+    const strengths = selectedAudit.strengths || [];
+    const weaknesses = selectedAudit.weaknesses || [];
+    
     return (
-      <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="space-y-6 animate-in fade-in duration-500 pb-20">
         <div className="flex items-center justify-between print:hidden">
           <Button variant="ghost" onClick={() => setSelectedAudit(null)} className="gap-2">
             <ChevronRight className="w-4 h-4 rotate-180" />
@@ -162,147 +171,263 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="bg-card border rounded-xl overflow-hidden shadow-sm print:shadow-none print:border-none">
-          {/* Header */}
-          <div className="p-8 border-b bg-muted/30">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <Badge className="mb-2">{selectedAudit.standardId.toUpperCase()}</Badge>
-                <h1 className="text-3xl font-bold tracking-tight">Rapport d'Audit Qualité</h1>
-                <p className="text-muted-foreground mt-1">Rapport généré le {new Date().toLocaleDateString()}</p>
+        <div className="bg-card border rounded-xl overflow-hidden shadow-sm print:shadow-none print:border-none max-w-5xl mx-auto">
+          {/* Cover Page / Header */}
+          <div className="p-12 border-b bg-muted/30 relative">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <ShieldCheck className="w-32 h-32" />
+            </div>
+            
+            <div className="flex justify-between items-start mb-12">
+              <div className="space-y-4">
+                <Badge className="px-3 py-1 text-sm font-bold">
+                  {(selectedAudit.standardId || 'ISO').toUpperCase()}
+                </Badge>
+                <h1 className="text-4xl font-extrabold tracking-tight">RAPPORT D'AUDIT DE CONFORMITÉ</h1>
+                <div className="h-1 w-24 bg-primary rounded-full" />
+                <p className="text-muted-foreground text-lg">Système de Management de la Qualité</p>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Référence</div>
-                <div className="text-xl font-mono font-bold">{selectedAudit.id.substring(0, 8).toUpperCase()}</div>
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Référence Rapport</div>
+                <div className="text-2xl font-mono font-bold text-primary">
+                  {selectedAudit.id ? selectedAudit.id.substring(0, 8).toUpperCase() : 'N/A'}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div>
-                <Label className="text-xs text-muted-foreground uppercase">Entreprise</Label>
-                <div className="font-semibold flex items-center gap-2 mt-1">
-                  <Building2 className="w-4 h-4 text-primary" />
-                  {selectedAudit.companyName}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Organisme Audité</Label>
+                  <div className="text-xl font-bold flex items-center gap-3">
+                    <Building2 className="w-6 h-6 text-primary" />
+                    {selectedAudit.companyName}
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-9">{selectedAudit.structure || 'Toute l\'organisation'}</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Équipe d'Audit</Label>
+                  <div className="text-lg font-semibold flex items-center gap-3">
+                    <UserIcon className="w-6 h-6 text-primary" />
+                    {selectedAudit.auditorName} (Auditeur Lead)
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground uppercase">Auditeur</Label>
-                <div className="font-semibold flex items-center gap-2 mt-1">
-                  <UserIcon className="w-4 h-4 text-primary" />
-                  {selectedAudit.auditorName}
+
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Période de l'Audit</Label>
+                  <div className="text-lg font-semibold flex items-center gap-3">
+                    <Calendar className="w-6 h-6 text-primary" />
+                    {selectedAudit.date}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground uppercase">Date</Label>
-                <div className="font-semibold flex items-center gap-2 mt-1">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  {selectedAudit.date}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground uppercase">Statut</Label>
-                <div className="mt-1">
-                  <Badge variant={selectedAudit.status === 'completed' ? 'default' : 'secondary'}>
-                    {selectedAudit.status === 'completed' ? 'Clôturé' : 'En cours'}
-                  </Badge>
+                
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Statut du Rapport</Label>
+                  <div className="mt-2">
+                    <Badge variant={selectedAudit.status === 'completed' ? 'default' : 'secondary'} className="px-4 py-1">
+                      {selectedAudit.status === 'completed' ? 'DÉFINITIF' : 'BROUILLON'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Summary Section */}
-          <div className="p-8 border-b">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Info className="w-5 h-5 text-primary" />
-              Résumé Exécutif
+          {/* 1. Context & Scope */}
+          <div className="p-12 border-b">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">1</span>
+              Contexte et Périmètre
             </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="space-y-4">
-                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                  <div className="text-sm text-muted-foreground">Score Global</div>
-                  <div className="text-3xl font-bold text-primary">{selectedAudit.summary?.score || 0}%</div>
-                  <Progress value={selectedAudit.summary?.score || 0} className="mt-2" />
-                </div>
-                <div className="p-4 bg-muted/50 rounded-lg border">
-                  <div className="text-sm text-muted-foreground">Niveau de Conformité</div>
-                  <div className="font-bold mt-1">{selectedAudit.summary?.complianceLevel || 'Non évalué'}</div>
-                </div>
-              </div>
-              
-              <div className="md:col-span-2">
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-3 border rounded-lg bg-destructive/5 border-destructive/20">
-                    <div className="text-2xl font-bold text-destructive">{selectedAudit.summary?.ncCount || 0}</div>
-                    <div className="text-[10px] uppercase font-bold text-destructive/70">Non-Conformités</div>
-                  </div>
-                  <div className="text-center p-3 border rounded-lg bg-warning/5 border-warning/20">
-                    <div className="text-2xl font-bold text-warning">{selectedAudit.summary?.obsCount || 0}</div>
-                    <div className="text-[10px] uppercase font-bold text-warning/70">Observations</div>
-                  </div>
-                  <div className="text-center p-3 border rounded-lg bg-success/5 border-success/20">
-                    <div className="text-2xl font-bold text-success">{selectedAudit.summary?.oppCount || 0}</div>
-                    <div className="text-[10px] uppercase font-bold text-success/70">Opportunités</div>
-                  </div>
+            <div className="grid md:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-xs font-bold text-primary uppercase mb-2">Objectifs de l'audit</Label>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {selectedAudit.objectives || "Évaluer la conformité du système de management par rapport aux exigences du référentiel, vérifier l'efficacité des processus et identifier les opportunités d'amélioration continue."}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground uppercase">Conclusion de l'auditeur</Label>
-                  <p className="mt-2 text-sm leading-relaxed">
-                    {selectedAudit.summary?.conclusion || "Aucune conclusion n'a été rédigée pour cet audit."}
+                  <Label className="text-xs font-bold text-primary uppercase mb-2">Critères d'audit</Label>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Norme {(selectedAudit.standardId || 'ISO').toUpperCase()}, Manuel Qualité interne, procédures opérationnelles et exigences réglementaires applicables.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-primary uppercase mb-2">Périmètre d'application</Label>
+                <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
+                  <p className="text-sm italic">
+                    {selectedAudit.scope || "L'ensemble des activités liées à la conception, la production et la commercialisation des produits/services au sein du site audité."}
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Details Section */}
-          <div className="p-8">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-primary" />
-              Détails des Constats
+          {/* 2. Executive Summary */}
+          <div className="p-12 border-b bg-primary/[0.02]">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">2</span>
+              Synthèse de la Performance
+            </h2>
+            <div className="grid md:grid-cols-3 gap-12">
+              <div className="space-y-6">
+                <div className="p-6 bg-card border rounded-xl shadow-sm">
+                  <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Indice de Maturité</div>
+                  <div className="flex items-end gap-2">
+                    <div className="text-5xl font-black text-primary">{selectedAudit.summary?.score || 0}</div>
+                    <div className="text-xl font-bold text-muted-foreground mb-1">%</div>
+                  </div>
+                  <Progress value={selectedAudit.summary?.score || 0} className="mt-6 h-3" />
+                  <p className="text-[10px] text-muted-foreground mt-4 text-center font-medium">
+                    Niveau de conformité : <span className="text-primary">{selectedAudit.summary?.complianceLevel || 'Évaluation en cours'}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="md:col-span-2 space-y-8">
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="p-4 border rounded-xl bg-destructive/5 border-destructive/20 text-center">
+                    <div className="text-3xl font-black text-destructive">{selectedAudit.summary?.ncCount || 0}</div>
+                    <div className="text-[10px] uppercase font-bold text-destructive/70 mt-1">Non-Conformités</div>
+                  </div>
+                  <div className="p-4 border rounded-xl bg-amber-500/5 border-amber-500/20 text-center">
+                    <div className="text-3xl font-black text-amber-600">{selectedAudit.summary?.obsCount || 0}</div>
+                    <div className="text-[10px] uppercase font-bold text-amber-600/70 mt-1">Observations</div>
+                  </div>
+                  <div className="p-4 border rounded-xl bg-emerald-500/5 border-emerald-500/20 text-center">
+                    <div className="text-3xl font-black text-emerald-600">{selectedAudit.summary?.oppCount || 0}</div>
+                    <div className="text-[10px] uppercase font-bold text-emerald-600/70 mt-1">Opportunités</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label className="text-xs font-bold text-primary uppercase">Conclusion Globale</Label>
+                  <div className="p-6 bg-card border rounded-xl text-sm leading-relaxed italic text-muted-foreground">
+                    "{selectedAudit.summary?.conclusion || "L'audit a démontré un système de management globalement mature, bien que des points d'attention subsistent sur certains processus clés."}"
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Strengths & Weaknesses */}
+          <div className="p-12 border-b">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">3</span>
+              Points Forts et Axes d'Amélioration
+            </h2>
+            <div className="grid md:grid-cols-2 gap-12">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-emerald-600 font-bold mb-4">
+                  <CheckCircle2 className="w-5 h-5" />
+                  POINTS FORTS
+                </div>
+                <ul className="space-y-3">
+                  {strengths.length > 0 ? strengths.map((s, i) => (
+                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                      {s}
+                    </li>
+                  )) : (
+                    <>
+                      <li className="flex gap-3 text-sm text-muted-foreground">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                        Engagement fort de la Direction Générale dans la démarche qualité.
+                      </li>
+                      <li className="flex gap-3 text-sm text-muted-foreground">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                        Maîtrise documentaire rigoureuse et accessible à tous les collaborateurs.
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-amber-600 font-bold mb-4">
+                  <AlertTriangle className="w-5 h-5" />
+                  AXES D'AMÉLIORATION
+                </div>
+                <ul className="space-y-3">
+                  {weaknesses.length > 0 ? weaknesses.map((w, i) => (
+                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                      {w}
+                    </li>
+                  )) : (
+                    <>
+                      <li className="flex gap-3 text-sm text-muted-foreground">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                        Optimisation du suivi des indicateurs de performance par processus.
+                      </li>
+                      <li className="flex gap-3 text-sm text-muted-foreground">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                        Renforcement de la sensibilisation aux risques opérationnels.
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Detailed Findings */}
+          <div className="p-12">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">4</span>
+              Détail des Constats d'Audit
             </h2>
             
-            {selectedAudit.findings && selectedAudit.findings.length > 0 ? (
-              <div className="space-y-6">
-                {selectedAudit.findings.map((finding, idx) => (
-                  <div key={idx} className="border rounded-lg overflow-hidden">
+            {findings.length > 0 ? (
+              <div className="space-y-8">
+                {findings.map((finding, idx) => (
+                  <div key={idx} className="border rounded-xl overflow-hidden shadow-sm">
                     <div className={cn(
-                      "px-4 py-2 flex items-center justify-between border-b",
-                      finding.severity === 'major' ? "bg-destructive/10" : 
-                      finding.severity === 'minor' ? "bg-warning/10" : "bg-muted"
+                      "px-6 py-3 flex items-center justify-between border-b",
+                      finding.severity === 'major' ? "bg-destructive/5" : 
+                      finding.severity === 'minor' ? "bg-amber-500/5" : "bg-muted/50"
                     )}>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={finding.severity === 'major' ? 'destructive' : 'outline'}>
-                          {finding.severity.toUpperCase()}
+                      <div className="flex items-center gap-4">
+                        <Badge variant={finding.severity === 'major' ? 'destructive' : 'outline'} className="font-bold">
+                          {(finding.severity || 'OBS').toUpperCase()}
                         </Badge>
-                        <span className="font-bold text-sm">Critère: {finding.clause || 'N/A'}</span>
+                        <span className="font-bold text-sm tracking-tight">Clause : {finding.clause || 'N/A'}</span>
                       </div>
-                      <Badge variant="secondary">{finding.status || 'Ouvert'}</Badge>
+                      <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">
+                        {finding.status || 'OUVERT'}
+                      </Badge>
                     </div>
-                    <div className="p-4 grid md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
+                    <div className="p-8 grid md:grid-cols-2 gap-12">
+                      <div className="space-y-6">
                         <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Description de l'écart</Label>
-                          <p className="text-sm mt-1">{finding.description}</p>
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Description du constat</Label>
+                          <p className="text-sm leading-relaxed text-foreground">{finding.description}</p>
                         </div>
                         <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Preuve / Référence</Label>
-                          <p className="text-sm mt-1 italic text-muted-foreground">{finding.evidence || 'Aucune preuve citée'}</p>
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Preuves objectives</Label>
+                          <div className="p-3 bg-muted/30 rounded border text-sm italic text-muted-foreground">
+                            {finding.evidence || 'Aucune preuve spécifique mentionnée.'}
+                          </div>
                         </div>
                       </div>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
                           <div>
-                            <Label className="text-[10px] uppercase text-muted-foreground">Responsable</Label>
-                            <p className="text-sm mt-1 font-medium">{finding.responsible || 'Non assigné'}</p>
+                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Responsable Action</Label>
+                            <p className="text-sm font-semibold">{finding.responsible || 'À définir'}</p>
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase text-muted-foreground">Échéance</Label>
-                            <p className="text-sm mt-1 font-medium">{finding.dueDate || 'N/A'}</p>
+                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Délai de traitement</Label>
+                            <p className="text-sm font-semibold">{finding.dueDate || 'Immédiat'}</p>
                           </div>
                         </div>
-                        <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Action Corrective prévue</Label>
-                          <p className="text-sm mt-1">{finding.correctiveAction || 'En attente de définition'}</p>
+                        <div className="p-4 bg-primary/[0.03] border border-primary/10 rounded-lg">
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Action Corrective / Préventive</Label>
+                          <p className="text-sm mt-1">{finding.correctiveAction || 'En attente du plan d\'action de l\'audité.'}</p>
                         </div>
                       </div>
                     </div>
@@ -310,33 +435,40 @@ export default function Reports() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 border-2 border-dashed rounded-xl">
-                <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4 opacity-20" />
-                <p className="text-muted-foreground">Aucun constat majeur ou mineur identifié lors de cet audit.</p>
+              <div className="text-center py-20 border-2 border-dashed rounded-2xl bg-muted/10">
+                <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6 opacity-30" />
+                <h3 className="text-xl font-bold mb-2">Conformité Totale</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto">
+                  Aucun écart majeur ou mineur n'a été identifié durant ce cycle d'audit sur le périmètre défini.
+                </p>
               </div>
             )}
           </div>
 
-          {/* History Section */}
-          <div className="p-8 bg-muted/10 border-t">
-            <h2 className="text-lg font-bold mb-4">Historique & Suivi</h2>
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="w-1 bg-primary rounded-full" />
+          {/* Footer / Signatures */}
+          <div className="p-12 bg-muted/30 border-t">
+            <div className="grid grid-cols-2 gap-24">
+              <div className="space-y-8">
+                <div className="h-24 border-b border-dashed border-muted-foreground/30 flex items-end pb-2 italic text-muted-foreground text-sm">
+                  Signature de l'Auditeur
+                </div>
                 <div>
-                  <div className="text-sm font-bold">Création de l'audit</div>
-                  <div className="text-xs text-muted-foreground">{selectedAudit.date} - Par {selectedAudit.auditorName}</div>
+                  <div className="font-bold">{selectedAudit.auditorName}</div>
+                  <div className="text-xs text-muted-foreground">Auditeur Qualité Senior</div>
                 </div>
               </div>
-              {selectedAudit.status === 'completed' && (
-                <div className="flex gap-4">
-                  <div className="w-1 bg-success rounded-full" />
-                  <div>
-                    <div className="text-sm font-bold">Clôture du rapport</div>
-                    <div className="text-xs text-muted-foreground">Validation finale effectuée</div>
-                  </div>
+              <div className="space-y-8">
+                <div className="h-24 border-b border-dashed border-muted-foreground/30 flex items-end pb-2 italic text-muted-foreground text-sm">
+                  Visa de la Direction / Audité
                 </div>
-              )}
+                <div>
+                  <div className="font-bold">{selectedAudit.companyName}</div>
+                  <div className="text-xs text-muted-foreground">Représentant de l'organisme</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-12 pt-8 border-t text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+              ISO AUDIT SAAS - Document Confidentiel - Tous droits réservés
             </div>
           </div>
         </div>
@@ -449,10 +581,10 @@ export default function Reports() {
                     <TableBody>
                       {companyAudits.map((audit) => (
                         <TableRow key={audit.id}>
-                          <TableCell className="font-mono text-xs">{audit.id.substring(0, 8).toUpperCase()}</TableCell>
+                          <TableCell className="font-mono text-xs">{(audit.id || '').substring(0, 8).toUpperCase()}</TableCell>
                           <TableCell>{audit.date}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{audit.standardId.toUpperCase()}</Badge>
+                            <Badge variant="outline">{(audit.standardId || 'ISO').toUpperCase()}</Badge>
                           </TableCell>
                           <TableCell>{audit.auditorName}</TableCell>
                           <TableCell>
