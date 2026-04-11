@@ -298,19 +298,19 @@ export default function Dashboard({ onStartAudit }: { onStartAudit?: (data: any)
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="standard" className="text-xs font-semibold">Référentiel / Norme</Label>
-                    <Select 
-                      value={newAuditData.standardId} 
-                      onValueChange={(v) => setNewAuditData({...newAuditData, standardId: v})}
-                    >
-                      <SelectTrigger id="standard" className="h-8 text-sm">
-                        <SelectValue placeholder="Sélectionnez une norme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STANDARDS.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select 
+                        value={newAuditData.standardId} 
+                        onValueChange={(v) => setNewAuditData({...newAuditData, standardId: v})}
+                      >
+                        <SelectTrigger id="standard" className="h-8 text-sm">
+                          <SelectValue placeholder="Sélectionnez une norme" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STANDARDS.filter(s => s.id !== 'stock_audit').map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="date" className="text-xs font-semibold">Date de l'audit</Label>

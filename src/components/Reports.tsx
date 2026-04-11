@@ -326,19 +326,21 @@ export default function Reports() {
             Retour à la liste
           </Button>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleExpertStockAnalysis} 
-              disabled={isGeneratingExpert}
-              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
-            >
-              {isGeneratingExpert ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <BrainCircuit className="w-4 h-4" />
-              )}
-              Analyse Expert Stock AI
-            </Button>
+            {selectedAudit.standardId === 'stock_audit' && (
+              <Button 
+                variant="outline" 
+                onClick={handleExpertStockAnalysis} 
+                disabled={isGeneratingExpert}
+                className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                {isGeneratingExpert ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <BrainCircuit className="w-4 h-4" />
+                )}
+                Analyse Expert Stock AI
+              </Button>
+            )}
             {!showExportButtons ? (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(!isEditing)} className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">

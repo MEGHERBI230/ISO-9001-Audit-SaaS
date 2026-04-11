@@ -105,7 +105,7 @@ export default function App() {
       case 'reports':
         return <Reports />;
       case 'stock-audit':
-        return <StockAuditView />;
+        return <StockAuditView onStartAudit={handleStartAudit} />;
       case 'settings':
         return <Settings />;
       default:

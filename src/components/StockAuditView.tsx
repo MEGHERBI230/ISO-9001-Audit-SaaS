@@ -22,6 +22,10 @@ import { toast } from 'sonner';
 import { generateStockAuditChecklist } from '../services/GeminiService';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Play,
+  ClipboardCheck
+} from 'lucide-react';
 
 const STOCK_TYPES = [
   { id: 'mp', name: 'Matières Premières', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -31,10 +35,25 @@ const STOCK_TYPES = [
   { id: 'nc', name: 'Non-Conformes', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
 ];
 
-export default function StockAuditView() {
+export default function StockAuditView({ onStartAudit }: { onStartAudit?: (data: any) => void }) {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [selectedType, setSelectedType] = React.useState<string | null>(null);
   const [generatedChecklist, setGeneratedChecklist] = React.useState<any>(null);
+
+  const handleStartRealAudit = () => {
+    if (!onStartAudit) return;
+    const typeName = selectedType ? STOCK_TYPES.find(t => t.id === selectedType)?.name : "Général";
+    onStartAudit({
+      companyName: "Audit Stock",
+      structure: `Logistique / ${typeName}`,
+      auditorName: "Expert Stock",
+      standardId: 'stock_audit',
+      sector: 'Industrie',
+      maturity: 'avancé',
+      auditType: 'interne',
+      date: new Date().toISOString().split('T')[0]
+    });
+  };
 
   const handleGenerate = async (typeId?: string) => {
     setIsGenerating(true);
@@ -86,7 +105,7 @@ export default function StockAuditView() {
         ))}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-4">
         <Button 
           size="lg" 
           className="gap-2 px-8 py-6 text-lg bg-purple-600 hover:bg-purple-700 shadow-lg"
@@ -99,6 +118,16 @@ export default function StockAuditView() {
             <BrainCircuit className="w-6 h-6" />
           )}
           Générer l'Audit Expert {selectedType ? `(${STOCK_TYPES.find(t => t.id === selectedType)?.name})` : ''}
+        </Button>
+
+        <Button 
+          size="lg" 
+          variant="outline"
+          className="gap-2 px-8 py-6 text-lg border-primary text-primary hover:bg-primary/5 shadow-lg"
+          onClick={handleStartRealAudit}
+        >
+          <Play className="w-6 h-6" />
+          Démarrer l'Audit Terrain
         </Button>
       </div>
 
