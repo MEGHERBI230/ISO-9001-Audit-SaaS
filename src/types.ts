@@ -44,6 +44,8 @@ export interface Exigence {
   title: string;
   question: string;
   expectedEvidence: string[];
+  risk?: string;
+  criticality?: string;
 }
 
 export interface AuditFinding {

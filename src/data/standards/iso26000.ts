@@ -15,8 +15,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex4.1.1',
             number: '4.1.1',
             title: 'Application du principe',
-            question: 'L’organisation rend-elle compte de ses impacts ?',
+            question: 'L’organisation rend-elle compte de ses impacts sur la société et l’environnement ?',
             expectedEvidence: ['Rapport RSE']
+          },
+          {
+            id: 'ex4.1.2',
+            number: '4.1.2',
+            title: 'Réponse aux autorités',
+            question: 'L’organisation répond-elle aux demandes des autorités légales ?',
+            expectedEvidence: ['Correspondances administratives']
+          },
+          {
+            id: 'ex4.1.3',
+            number: '4.1.3',
+            title: 'Acceptation de la critique',
+            question: 'L’organisation accepte-t-elle un examen externe de ses actions ?',
+            expectedEvidence: ['Audits externes', 'Revues de presse']
           }
         ]
       }
@@ -38,6 +52,20 @@ export const ISO_26000_2010: Clause[] = [
             title: 'Cartographie des PI',
             question: 'Les parties prenantes sont-elles identifiées et engagées ?',
             expectedEvidence: ['Cartographie des parties prenantes']
+          },
+          {
+            id: 'ex5.2.2',
+            number: '5.2.2',
+            title: 'Dialogue avec les PI',
+            question: 'Existe-t-il des mécanismes de dialogue régulier avec les PI ?',
+            expectedEvidence: ['Comptes rendus de réunions PI']
+          },
+          {
+            id: 'ex5.2.3',
+            number: '5.2.3',
+            title: 'Prise en compte des intérêts',
+            question: 'Les intérêts des PI sont-ils pris en compte dans les décisions ?',
+            expectedEvidence: ['Analyse de matérialité']
           }
         ]
       }
@@ -59,6 +87,20 @@ export const ISO_26000_2010: Clause[] = [
             title: 'Système de gouvernance',
             question: 'L’organisation a-t-elle un système de gouvernance favorisant la RS ?',
             expectedEvidence: ['Charte de gouvernance']
+          },
+          {
+            id: 'ex6.2.1.2',
+            number: '6.2.1.2',
+            title: 'Intégration de la RS',
+            question: 'La RS est-elle intégrée dans les processus de décision stratégique ?',
+            expectedEvidence: ['PV de conseil d’administration']
+          },
+          {
+            id: 'ex6.2.1.3',
+            number: '6.2.1.3',
+            title: 'Surveillance de la RS',
+            question: 'Existe-t-il un mécanisme de surveillance des performances RS par la direction ?',
+            expectedEvidence: ['Tableau de bord RS']
           }
         ]
       }
@@ -78,8 +120,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.3.3.1',
             number: '6.3.3.1',
             title: 'Vigilance droits de l’Homme',
-            question: 'L’organisation exerce-t-elle son devoir de vigilance ?',
+            question: 'L’organisation exerce-t-elle son devoir de vigilance sur toute sa chaîne de valeur ?',
             expectedEvidence: ['Analyse de risques droits de l’Homme']
+          },
+          {
+            id: 'ex6.3.3.2',
+            number: '6.3.3.2',
+            title: 'Évaluation des fournisseurs',
+            question: 'Les fournisseurs sont-ils évalués sur le respect des droits de l’Homme ?',
+            expectedEvidence: ['Questionnaires fournisseurs', 'Audits']
+          },
+          {
+            id: 'ex6.3.3.3',
+            number: '6.3.3.3',
+            title: 'Actions de remédiation',
+            question: 'Des actions sont-elles prévues en cas de violation identifiée ?',
+            expectedEvidence: ['Plan de remédiation']
           }
         ]
       },
@@ -92,8 +148,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.3.4.1',
             number: '6.3.4.1',
             title: 'Gestion des risques',
-            question: 'Les situations à risque sont-elles identifiées ?',
+            question: 'Les situations à risque (zones de conflit, travail forcé) sont-elles identifiées ?',
             expectedEvidence: ['Registre des risques']
+          },
+          {
+            id: 'ex6.3.4.2',
+            number: '6.3.4.2',
+            title: 'Protection des vulnérables',
+            question: 'Des mesures spécifiques protègent-elles les groupes vulnérables ?',
+            expectedEvidence: ['Politique inclusion et diversité']
+          },
+          {
+            id: 'ex6.3.4.3',
+            number: '6.3.4.3',
+            title: 'Non-complicité',
+            question: 'L’organisation s’assure-t-elle de ne pas être complice de violations ?',
+            expectedEvidence: ['Code d’éthique des affaires']
           }
         ]
       }
@@ -113,8 +183,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.4.3.1',
             number: '6.4.3.1',
             title: 'Dialogue social',
-            question: 'L’organisation favorise-t-elle le dialogue social ?',
+            question: 'L’organisation favorise-t-elle le dialogue social et la négociation collective ?',
             expectedEvidence: ['Accords d’entreprise']
+          },
+          {
+            id: 'ex6.4.3.2',
+            number: '6.4.3.2',
+            title: 'Représentation du personnel',
+            question: 'Les représentants du personnel ont-ils accès aux informations nécessaires ?',
+            expectedEvidence: ['PV de réunions CSE/Syndicats']
+          },
+          {
+            id: 'ex6.4.3.3',
+            number: '6.4.3.3',
+            title: 'Égalité des chances',
+            question: 'L’organisation garantit-elle l’égalité de traitement (embauche, promotion) ?',
+            expectedEvidence: ['Index égalité F/H']
           }
         ]
       },
@@ -127,8 +211,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.4.4.1',
             number: '6.4.4.1',
             title: 'Conditions décentes',
-            question: 'Les conditions de travail sont-elles décentes ?',
-            expectedEvidence: ['Règlement intérieur']
+            question: 'Les conditions de travail (temps, salaire) sont-elles décentes et légales ?',
+            expectedEvidence: ['Règlement intérieur', 'Bulletins de paie']
+          },
+          {
+            id: 'ex6.4.4.2',
+            number: '6.4.4.2',
+            title: 'Santé et sécurité',
+            question: 'L’organisation assure-t-elle un environnement de travail sûr et sain ?',
+            expectedEvidence: ['Document Unique (DUERP)']
+          },
+          {
+            id: 'ex6.4.4.3',
+            number: '6.4.4.3',
+            title: 'Protection sociale',
+            question: 'Tous les travailleurs bénéficient-ils d’une protection sociale adéquate ?',
+            expectedEvidence: ['Contrats de mutuelle/prévoyance']
           }
         ]
       }
@@ -148,8 +246,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.5.3.1',
             number: '6.5.3.1',
             title: 'Gestion environnementale',
-            question: 'L’organisation prévient-elle les pollutions ?',
+            question: 'L’organisation prévient-elle les pollutions (air, eau, sol) ?',
             expectedEvidence: ['Plan de gestion environnementale']
+          },
+          {
+            id: 'ex6.5.3.2',
+            number: '6.5.3.2',
+            title: 'Gestion des déchets',
+            question: 'Existe-t-il un système de tri et de valorisation des déchets ?',
+            expectedEvidence: ['Bordereaux de suivi des déchets']
+          },
+          {
+            id: 'ex6.5.3.3',
+            number: '6.5.3.3',
+            title: 'Utilisation durable des ressources',
+            question: 'L’organisation optimise-t-elle sa consommation d’énergie et d’eau ?',
+            expectedEvidence: ['Factures d’énergie', 'Indicateurs de conso']
           }
         ]
       }
@@ -169,8 +281,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.6.3.1',
             number: '6.6.3.1',
             title: 'Anti-corruption',
-            question: 'L’organisation lutte-t-elle contre la corruption ?',
-            expectedEvidence: ['Code de conduite']
+            question: 'L’organisation lutte-t-elle activement contre la corruption ?',
+            expectedEvidence: ['Code de conduite', 'Cartographie des risques corruption']
+          },
+          {
+            id: 'ex6.6.3.2',
+            number: '6.6.3.2',
+            title: 'Cadeaux et invitations',
+            question: 'Existe-t-il une politique claire sur les cadeaux et invitations ?',
+            expectedEvidence: ['Registre des cadeaux']
+          },
+          {
+            id: 'ex6.6.3.3',
+            number: '6.6.3.3',
+            title: 'Formation anti-corruption',
+            question: 'Le personnel exposé est-il formé à la lutte contre la corruption ?',
+            expectedEvidence: ['Attestations de formation Sapin II']
           }
         ]
       }
@@ -190,8 +316,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.7.3.1',
             number: '6.7.3.1',
             title: 'Information loyale',
-            question: 'L’information des consommateurs est-elle loyale ?',
-            expectedEvidence: ['Supports marketing']
+            question: 'L’information des consommateurs est-elle loyale, claire et non trompeuse ?',
+            expectedEvidence: ['Supports marketing', 'Étiquetage']
+          },
+          {
+            id: 'ex6.7.3.2',
+            number: '6.7.3.2',
+            title: 'Protection des données',
+            question: 'L’organisation protège-t-elle les données personnelles des consommateurs ?',
+            expectedEvidence: ['Registre RGPD']
+          },
+          {
+            id: 'ex6.7.3.3',
+            number: '6.7.3.3',
+            title: 'Service après-vente',
+            question: 'Existe-t-il un système efficace de traitement des réclamations ?',
+            expectedEvidence: ['Registre des réclamations clients']
           }
         ]
       }
@@ -211,8 +351,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex6.8.3.1',
             number: '6.8.3.1',
             title: 'Engagement local',
-            question: 'L’organisation s’implique-t-elle localement ?',
+            question: 'L’organisation s’implique-t-elle dans le développement des communautés locales ?',
             expectedEvidence: ['Rapport d’engagement local']
+          },
+          {
+            id: 'ex6.8.3.2',
+            number: '6.8.3.2',
+            title: 'Emploi local',
+            question: 'L’organisation favorise-t-elle l’emploi et la formation locale ?',
+            expectedEvidence: ['Statistiques RH par zone']
+          },
+          {
+            id: 'ex6.8.3.3',
+            number: '6.8.3.3',
+            title: 'Soutien aux initiatives',
+            question: 'L’organisation soutient-elle des projets sociaux ou culturels locaux ?',
+            expectedEvidence: ['Contrats de mécénat/sponsoring']
           }
         ]
       }
@@ -232,8 +386,22 @@ export const ISO_26000_2010: Clause[] = [
             id: 'ex7.4.1',
             number: '7.4.1',
             title: 'Reporting RS',
-            question: 'L’organisation communique-t-elle sur ses performances RS ?',
-            expectedEvidence: ['Rapport annuel']
+            question: 'L’organisation communique-t-elle régulièrement sur ses performances RS ?',
+            expectedEvidence: ['Rapport annuel', 'Site web']
+          },
+          {
+            id: 'ex7.4.2',
+            number: '7.4.2',
+            title: 'Transparence',
+            question: 'La communication est-elle transparente sur les échecs comme sur les succès ?',
+            expectedEvidence: ['Analyse des écarts dans le rapport']
+          },
+          {
+            id: 'ex7.4.3',
+            number: '7.4.3',
+            title: 'Accessibilité de l’info',
+            question: 'L’information RS est-elle facilement accessible aux parties prenantes ?',
+            expectedEvidence: ['Preuves de diffusion multicanale']
           }
         ]
       }

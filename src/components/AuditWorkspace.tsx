@@ -18,7 +18,15 @@ import {
   FileText,
   User,
   History,
-  X
+  X,
+  Sparkles,
+  Loader2,
+  PackageSearch,
+  BrainCircuit,
+  Save,
+  Edit,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   Table, 
@@ -30,6 +38,13 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   Dialog, 
@@ -55,14 +70,14 @@ import { STANDARDS, RATING_LEGEND } from '@/src/constants';
 import { FindingStatus } from '@/src/types';
 import { cn } from '@/lib/utils';
 import { db, auth } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, query, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, serverTimestamp, collection, onSnapshot, query, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { generateAuditChecklist } from '../services/GeminiService';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { generateAuditChecklist, generateStockAuditChecklist } from '../services/GeminiService';
 
-export default function AuditWorkspace({ auditContext }: { auditContext?: any }) {
+export default function AuditWorkspace({ auditContext, onNavigate }: { auditContext?: any, onNavigate?: (view: string) => void }) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedClauses, setExpandedClauses] = React.useState<string[]>([]);
+  const [aiPrompt, setAiPrompt] = React.useState('');
   const [selectedExigence, setSelectedExigence] = React.useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -72,7 +87,7 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
   const [currentFinding, setCurrentFinding] = React.useState({
     rating: 'C',
     riskLevel: 'low',
-    comment: ''
+    description: ''
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -80,27 +95,67 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
   const structure = aiStructure.length > 0 ? aiStructure : activeStandard.structure;
 
   const handleGenerateAI = async () => {
-    if (!auditContext) return;
+    const context = auditContext || {
+      companyName: "Entreprise Industrielle",
+      structure: "Direction Générale",
+      process: "Global",
+      sector: "Industrie",
+      maturity: "intermédiaire",
+      auditType: "interne"
+    };
     
     setIsGenerating(true);
     try {
+      console.log("Generating AI checklist with context:", context, "and prompt:", aiPrompt);
+
       const result = await generateAuditChecklist({
         standard: activeStandard.name,
-        structure: auditContext.structure,
-        process: auditContext.process,
-        sector: auditContext.sector,
-        maturity: auditContext.maturity,
-        auditType: auditContext.auditType
+        structure: context.structure,
+        process: context.process,
+        sector: context.sector,
+        maturity: context.maturity,
+        auditType: context.auditType,
+        customPrompt: aiPrompt
       });
       
-      setAiStructure(result.clauses);
-      if (result.clauses.length > 0) {
+      if (result && result.clauses) {
+        setAiStructure(result.clauses);
         setExpandedClauses([result.clauses[0].id]);
+        toast.success("Checklist générée intelligemment par l'IA");
+      } else {
+        throw new Error("Format de réponse IA invalide");
       }
-      toast.success("Checklist générée intelligemment par l'IA");
     } catch (error) {
       console.error("AI Generation error:", error);
-      toast.error("Erreur lors de la génération par l'IA");
+      toast.error("Erreur lors de la génération par l'IA. Veuillez réessayer.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateStockAudit = async () => {
+    const context = auditContext || {
+      companyName: "Entreprise Industrielle",
+      structure: "Direction Logistique / Stocks"
+    };
+    
+    setIsGenerating(true);
+    try {
+      const result = await generateStockAuditChecklist({
+        companyName: context.companyName,
+        structure: context.structure
+      });
+      
+      if (result && result.clauses) {
+        setAiStructure(result.clauses);
+        setExpandedClauses([result.clauses[0].id]);
+        toast.success("Audit Expert des Stocks généré avec succès");
+      } else {
+        throw new Error("Format de réponse IA invalide");
+      }
+    } catch (error) {
+      console.error("Stock Audit Generation error:", error);
+      toast.error("Erreur lors de la génération de l'audit des stocks");
     } finally {
       setIsGenerating(false);
     }
@@ -137,6 +192,7 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
       await setDoc(doc(db, 'audits', auditContext.id, 'findings', findingId), {
         auditId: auditContext.id,
         requirementId: selectedExigence.number,
+        clause: selectedExigence.number,
         ...currentFinding,
         updatedAt: serverTimestamp()
       });
@@ -144,6 +200,22 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
     } catch (error) {
       console.error("Error saving finding:", error);
       toast.error("Erreur lors de l'enregistrement");
+    }
+  };
+
+  const handleValidateAudit = async () => {
+    if (!auditContext?.id) return;
+    try {
+      // Mark as draft so it appears in reports
+      await updateDoc(doc(db, 'audits', auditContext.id), {
+        status: 'draft',
+        updatedAt: serverTimestamp()
+      });
+      toast.success("Audit validé et prêt pour le rapport");
+      if (onNavigate) onNavigate('reports');
+    } catch (error) {
+      console.error("Error validating audit:", error);
+      toast.error("Erreur lors de la validation");
     }
   };
 
@@ -196,30 +268,45 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2 h-8 text-xs border-primary/30 text-primary hover:bg-primary/5"
-            onClick={handleGenerateAI}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5" />
-            )}
-            Générer avec IA
-          </Button>
           <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
             <History className="w-3.5 h-3.5" />
             Historique
           </Button>
-          <Button size="sm" className="gap-2 h-8 text-xs">
+          <Button size="sm" className="gap-2 h-8 text-xs" onClick={handleValidateAudit}>
             <Check className="w-3.5 h-3.5" />
             Valider
           </Button>
         </div>
       </div>
+
+      {/* AI Assistant Bar */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-3 flex items-center gap-3">
+          <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+          <div className="flex-1">
+            <Input 
+              placeholder="Demandez à l'IA de générer des questions spécifiques ou d'adapter la checklist..." 
+              className="bg-background border-primary/10"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleGenerateAI();
+                }
+              }}
+            />
+          </div>
+          <Button 
+            size="sm" 
+            onClick={handleGenerateAI} 
+            disabled={isGenerating}
+            className="gap-2"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
+            Générer
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Filters & Search */}
       <div className="flex items-center gap-4">
@@ -322,13 +409,13 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                         setCurrentFinding({
                                           rating: finding.rating,
                                           riskLevel: finding.riskLevel,
-                                          comment: finding.comment
+                                          description: finding.description || finding.comment || ''
                                         });
                                       } else {
                                         setCurrentFinding({
                                           rating: 'C',
                                           riskLevel: 'low',
-                                          comment: ''
+                                          description: ''
                                         });
                                       }
                                     }}
@@ -396,8 +483,8 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                     <Textarea 
                                       placeholder="Décrivez vos observations, les entretiens réalisés et l'échantillonnage..." 
                                       className="min-h-[60px] text-xs resize-none"
-                                      value={currentFinding.comment}
-                                      onChange={(e) => setCurrentFinding({...currentFinding, comment: e.target.value})}
+                                      value={currentFinding.description}
+                                      onChange={(e) => setCurrentFinding({...currentFinding, description: e.target.value})}
                                     />
                                   </div>
 

@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { generateExpertStockAudit } from '../services/GeminiService';
 import { 
   Search, 
   FileText, 
@@ -38,7 +39,9 @@ import {
   ShieldCheck,
   Edit,
   Save,
-  X
+  X,
+  BrainCircuit,
+  Loader2
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, updateDoc } from 'firebase/firestore';
@@ -96,6 +99,9 @@ export default function Reports() {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editData, setEditData] = React.useState<Partial<Audit>>({});
   const [showExportButtons, setShowExportButtons] = React.useState(false);
+  const [findings, setFindings] = React.useState<any[]>([]);
+  const [expertAnalysis, setExpertAnalysis] = React.useState<any>(null);
+  const [isGeneratingExpert, setIsGeneratingExpert] = React.useState(false);
 
   React.useEffect(() => {
     const user = auth.currentUser;
@@ -200,6 +206,22 @@ export default function Reports() {
       });
       // Start with export buttons hidden to show the "Draft" view first as requested
       setShowExportButtons(false);
+
+      // Fetch findings from subcollection
+      const fetchFindings = async () => {
+        try {
+          const findingsSnap = await getDocs(collection(db, 'audits', selectedAudit.id, 'findings'));
+          const findingsData = findingsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setFindings(findingsData);
+        } catch (error) {
+          console.error("Error fetching findings for report:", error);
+          setFindings([]);
+        }
+      };
+      fetchFindings();
     }
   }, [selectedAudit]);
 
@@ -239,8 +261,8 @@ export default function Reports() {
     const headers = ["ID", "Clause", "Gravité", "Description", "Preuves", "Responsable", "Échéance"];
     const rows = findings.map(f => [
       selectedAudit.id.substring(0, 8),
-      f.clause || 'N/A',
-      f.severity || 'OBS',
+      f.clause || f.requirementId || 'N/A',
+      f.rating || 'C',
       f.description || '',
       f.evidence || '',
       f.responsible || '',
@@ -265,6 +287,24 @@ export default function Reports() {
     toast.success("Export Excel (CSV) généré");
   };
 
+  const handleExpertStockAnalysis = async () => {
+    if (!selectedAudit) return;
+    setIsGeneratingExpert(true);
+    try {
+      const result = await generateExpertStockAudit({
+        ...selectedAudit,
+        findings
+      });
+      setExpertAnalysis(result);
+      toast.success("Analyse expert stock générée avec succès !");
+    } catch (error) {
+      console.error("Error generating expert analysis:", error);
+      toast.error("Erreur lors de la génération de l'analyse expert");
+    } finally {
+      setIsGeneratingExpert(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -274,9 +314,9 @@ export default function Reports() {
   }
 
   if (selectedAudit) {
-    const findings = selectedAudit.findings || [];
     const strengths = selectedAudit.strengths || [];
     const weaknesses = selectedAudit.weaknesses || [];
+    const activeStandard = STANDARDS.find(s => s.id === selectedAudit.standardId) || STANDARDS[0];
     
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -286,6 +326,19 @@ export default function Reports() {
             Retour à la liste
           </Button>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleExpertStockAnalysis} 
+              disabled={isGeneratingExpert}
+              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+            >
+              {isGeneratingExpert ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <BrainCircuit className="w-4 h-4" />
+              )}
+              Analyse Expert Stock AI
+            </Button>
             {!showExportButtons ? (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(!isEditing)} className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
@@ -340,11 +393,11 @@ export default function Reports() {
             <div className="flex justify-between items-start mb-12">
               <div className="space-y-4">
                 <Badge className="px-3 py-1 text-sm font-bold">
-                  {(selectedAudit.standardId || 'ISO').toUpperCase()}
+                  {activeStandard.name}
                 </Badge>
                 <h1 className="text-4xl font-extrabold tracking-tight">RAPPORT D'AUDIT DE CONFORMITÉ</h1>
                 <div className="h-1 w-24 bg-primary rounded-full" />
-                <p className="text-muted-foreground text-lg">Système de Management de la Qualité</p>
+                <p className="text-muted-foreground text-lg">{activeStandard.description}</p>
               </div>
               <div className="text-right">
                 <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Référence Rapport</div>
@@ -647,14 +700,14 @@ export default function Reports() {
                   <div key={idx} className="border rounded-xl overflow-hidden shadow-sm break-inside-avoid">
                     <div className={cn(
                       "px-6 py-3 flex items-center justify-between border-b",
-                      finding.severity === 'major' ? "bg-destructive/5" : 
-                      finding.severity === 'minor' ? "bg-amber-500/5" : "bg-muted/50"
+                      finding.rating === 'NCM' ? "bg-destructive/5" : 
+                      finding.rating === 'NCm' ? "bg-amber-500/5" : "bg-muted/50"
                     )}>
                       <div className="flex items-center gap-4">
-                        <Badge variant={finding.severity === 'major' ? 'destructive' : 'outline'} className="font-bold">
-                          {(finding.severity || 'OBS').toUpperCase()}
+                        <Badge variant={finding.rating === 'NCM' ? 'destructive' : 'outline'} className="font-bold">
+                          {(finding.rating || 'C').toUpperCase()}
                         </Badge>
-                        <span className="font-bold text-sm tracking-tight">Clause : {finding.clause || 'N/A'}</span>
+                        <span className="font-bold text-sm tracking-tight">Clause : {finding.clause || finding.requirementId || 'N/A'}</span>
                       </div>
                       <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">
                         {finding.status || 'OUVERT'}
@@ -703,6 +756,74 @@ export default function Reports() {
               </div>
             )}
           </div>
+
+          {/* 5. Expert Stock Analysis (AI) */}
+          {expertAnalysis && (
+            <div className="p-12 border-b bg-purple-50/30">
+              <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 text-purple-900">
+                <BrainCircuit className="w-8 h-8 text-purple-600" />
+                Analyse Expert Senior : Audit des Stocks
+              </h2>
+              
+              <div className="space-y-8">
+                <Card className="border-purple-200 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-purple-700 uppercase">Synthèse Exécutive</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{expertAnalysis.executiveSummary}</p>
+                  </CardContent>
+                </Card>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card className="border-purple-200 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-purple-700 uppercase">Cartographie des Risques</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{expertAnalysis.riskMapping}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-purple-200 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-purple-700 uppercase">Signaux de Fraude Potentiels</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-destructive font-medium">{expertAnalysis.fraudSignals}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-purple-200 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-purple-700 uppercase">Analyse Détaillée par Type de Stock</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{expertAnalysis.detailedAnalysis}</p>
+                  </CardContent>
+                </Card>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card className="border-purple-200 shadow-sm bg-amber-50/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-amber-700 uppercase">Écarts Détectés</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{expertAnalysis.detectedGaps}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-purple-200 shadow-sm bg-emerald-50/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-emerald-700 uppercase">Recommandations Stratégiques</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{expertAnalysis.recommendations}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 5. Final Conclusion */}
           <div className="p-12 bg-primary/[0.02]">
@@ -873,7 +994,7 @@ export default function Reports() {
                           <TableCell className="font-mono text-xs">{(audit.id || '').substring(0, 8).toUpperCase()}</TableCell>
                           <TableCell>{audit.date}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{(audit.standardId || 'ISO').toUpperCase()}</Badge>
+                            <Badge variant="outline">{(STANDARDS.find(s => s.id === audit.standardId)?.name || audit.standardId || 'ISO').toUpperCase()}</Badge>
                           </TableCell>
                           <TableCell>{audit.auditorName}</TableCell>
                           <TableCell>

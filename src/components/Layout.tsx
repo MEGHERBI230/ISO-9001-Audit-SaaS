@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   ShieldCheck,
-  FileText
+  FileText,
+  PackageSearch
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -108,6 +109,12 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
                 label="Rapports" 
                 active={activeTab === 'reports'}
                 onClick={() => onTabChange('reports')}
+              />
+              <SidebarItem 
+                icon={PackageSearch} 
+                label="Audit des Stocks" 
+                active={activeTab === 'stock-audit'}
+                onClick={() => onTabChange('stock-audit')}
               />
               <div className="pt-4 pb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Administration

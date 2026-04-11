@@ -6,6 +6,14 @@ import { ISO_26000_2010 } from './iso26000';
 import { ISO_56002_2019 } from './iso56002';
 import { ISO_19011_2018 } from './iso19011';
 import { ISO_37001_2016 } from './iso37001';
+import { IATF_16949_2016 } from './iatf16949';
+import { ISO_17025_2017 } from './iso17025';
+import { CKD_SKD_ALGERIA } from './ckd_skd';
+import { DECRET_20_227 } from './decret_20_227';
+import { APQP_CORE_TOOL } from './apqp';
+import { PPAP_CORE_TOOL } from './ppap';
+import { FMEA_CORE_TOOL } from './fmea';
+import { STOCK_AUDIT_EXPERT } from './stock_audit';
 import { Clause } from '../../types';
 
 export interface Standard {
@@ -68,42 +76,48 @@ export const STANDARDS: Standard[] = [
     id: 'iatf16949',
     name: 'IATF 16949:2016',
     description: 'Qualité Automobile (Exigences spécifiques)',
-    structure: []
+    structure: IATF_16949_2016
   },
   {
     id: 'iso17025',
     name: 'ISO/IEC 17025:2017',
     description: 'Compétence des laboratoires d’étalonnages et d’essais',
-    structure: []
+    structure: ISO_17025_2017
   },
   {
     id: 'ckd_skd',
     name: 'Cahier des charges CKD/SKD (Algérie)',
     description: 'Réglementation assemblage véhicules en Algérie',
-    structure: []
+    structure: CKD_SKD_ALGERIA
   },
   {
     id: 'decret_20_227',
     name: 'Décret exécutif n°20-227 (Algérie)',
     description: 'Conditions de construction de véhicules',
-    structure: []
+    structure: DECRET_20_227
   },
   {
     id: 'apqp',
     name: 'APQP (Core Tool)',
     description: 'Advanced Product Quality Planning',
-    structure: []
+    structure: APQP_CORE_TOOL
   },
   {
     id: 'ppap',
     name: 'PPAP (Core Tool)',
     description: 'Production Part Approval Process',
-    structure: []
+    structure: PPAP_CORE_TOOL
   },
   {
     id: 'fmea',
     name: 'FMEA / AMDEC (Core Tool)',
     description: 'Failure Mode and Effects Analysis',
-    structure: []
+    structure: FMEA_CORE_TOOL
+  },
+  {
+    id: 'stock_audit',
+    name: 'Audit Expert des Stocks',
+    description: 'Audit industriel complet des stocks et détection de fraudes',
+    structure: STOCK_AUDIT_EXPERT
   }
 ];
