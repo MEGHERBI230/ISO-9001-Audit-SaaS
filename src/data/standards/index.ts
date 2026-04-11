@@ -63,5 +63,47 @@ export const STANDARDS: Standard[] = [
     name: 'ISO 37001:2016',
     description: 'Systèmes de management anti-corruption',
     structure: ISO_37001_2016
+  },
+  {
+    id: 'iatf16949',
+    name: 'IATF 16949:2016',
+    description: 'Qualité Automobile (Exigences spécifiques)',
+    structure: []
+  },
+  {
+    id: 'iso17025',
+    name: 'ISO/IEC 17025:2017',
+    description: 'Compétence des laboratoires d’étalonnages et d’essais',
+    structure: []
+  },
+  {
+    id: 'ckd_skd',
+    name: 'Cahier des charges CKD/SKD (Algérie)',
+    description: 'Réglementation assemblage véhicules en Algérie',
+    structure: []
+  },
+  {
+    id: 'decret_20_227',
+    name: 'Décret exécutif n°20-227 (Algérie)',
+    description: 'Conditions de construction de véhicules',
+    structure: []
+  },
+  {
+    id: 'apqp',
+    name: 'APQP (Core Tool)',
+    description: 'Advanced Product Quality Planning',
+    structure: []
+  },
+  {
+    id: 'ppap',
+    name: 'PPAP (Core Tool)',
+    description: 'Production Part Approval Process',
+    structure: []
+  },
+  {
+    id: 'fmea',
+    name: 'FMEA / AMDEC (Core Tool)',
+    description: 'Failure Mode and Effects Analysis',
+    structure: []
   }
 ];

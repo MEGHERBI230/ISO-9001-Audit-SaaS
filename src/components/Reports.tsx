@@ -35,10 +35,13 @@ import {
   AlertTriangle,
   Info,
   Printer,
-  ShieldCheck
+  ShieldCheck,
+  Edit,
+  Save,
+  X
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, updateDoc } from 'firebase/firestore';
 import { STANDARDS } from '../constants';
 import { 
   Select, 
@@ -49,6 +52,11 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+import { deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Audit {
   id: string;
@@ -85,13 +93,20 @@ export default function Reports() {
   const [filterType, setFilterType] = React.useState('all');
   const [expandedCompanies, setExpandedCompanies] = React.useState<string[]>([]);
   const [selectedAudit, setSelectedAudit] = React.useState<Audit | null>(null);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editData, setEditData] = React.useState<Partial<Audit>>({});
+  const [showExportButtons, setShowExportButtons] = React.useState(false);
 
   React.useEffect(() => {
-    if (!auth.currentUser) return;
+    const user = auth.currentUser;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const q = query(
       collection(db, 'audits'), 
-      where('createdBy', '==', auth.currentUser.uid),
+      where('createdBy', '==', user.uid),
       orderBy('createdAt', 'desc')
     );
 
@@ -108,11 +123,13 @@ export default function Reports() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth.currentUser]);
 
   const filteredAudits = audits.filter(audit => {
-    const matchesSearch = audit.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         audit.auditorName.toLowerCase().includes(searchTerm.toLowerCase());
+    const companyName = audit.companyName || '';
+    const auditorName = audit.auditorName || '';
+    const matchesSearch = companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         auditorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || audit.status === filterStatus;
     const matchesStandard = filterStandard === 'all' || audit.standardId === filterStandard;
     const matchesType = filterType === 'all' || audit.type === filterType;
@@ -120,10 +137,11 @@ export default function Reports() {
   });
 
   const auditsByCompany = filteredAudits.reduce((acc, audit) => {
-    if (!acc[audit.companyName]) {
-      acc[audit.companyName] = [];
+    const company = audit.companyName || 'Entreprise Inconnue';
+    if (!acc[company]) {
+      acc[company] = [];
     }
-    acc[audit.companyName].push(audit);
+    acc[company].push(audit);
     return acc;
   }, {} as Record<string, Audit[]>);
 
@@ -137,6 +155,114 @@ export default function Reports() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleReset = async () => {
+    if (!auth.currentUser) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer TOUS vos rapports et non-conformités ? Cette action est irréversible.")) return;
+
+    try {
+      setLoading(true);
+      // Delete audits
+      const auditSnap = await getDocs(query(collection(db, 'audits'), where('createdBy', '==', auth.currentUser.uid)));
+      const deleteAudits = auditSnap.docs.map(d => deleteDoc(doc(db, 'audits', d.id)));
+      
+      // Delete NCs
+      const ncSnap = await getDocs(query(collection(db, 'non-conformities'), where('createdBy', '==', auth.currentUser.uid)));
+      const deleteNCs = ncSnap.docs.map(d => deleteDoc(doc(db, 'non-conformities', d.id)));
+
+      await Promise.all([...deleteAudits, ...deleteNCs]);
+      toast.success("Données réinitialisées avec succès");
+      setSelectedAudit(null);
+    } catch (error) {
+      console.error("Error resetting data:", error);
+      toast.error("Erreur lors de la réinitialisation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (selectedAudit) {
+      setEditData({
+        objectives: selectedAudit.objectives || "",
+        scope: selectedAudit.scope || "",
+        strengths: selectedAudit.strengths || [],
+        weaknesses: selectedAudit.weaknesses || [],
+        summary: {
+          score: selectedAudit.summary?.score || 0,
+          complianceLevel: selectedAudit.summary?.complianceLevel || "",
+          conclusion: selectedAudit.summary?.conclusion || "",
+          ncCount: selectedAudit.summary?.ncCount || 0,
+          obsCount: selectedAudit.summary?.obsCount || 0,
+          oppCount: selectedAudit.summary?.oppCount || 0
+        }
+      });
+      // Start with export buttons hidden to show the "Draft" view first as requested
+      setShowExportButtons(false);
+    }
+  }, [selectedAudit]);
+
+  const handleValidate = async () => {
+    if (!selectedAudit) return;
+    try {
+      await updateDoc(doc(db, 'audits', selectedAudit.id), {
+        status: 'completed'
+      });
+      setSelectedAudit({ ...selectedAudit, status: 'completed' });
+      setShowExportButtons(true);
+      toast.success("Rapport validé ! Vous pouvez maintenant exporter en PDF ou Excel.");
+    } catch (error) {
+      console.error("Error validating audit:", error);
+      toast.error("Erreur lors de la validation");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedAudit) return;
+    try {
+      await updateDoc(doc(db, 'audits', selectedAudit.id), editData);
+      setSelectedAudit({ ...selectedAudit, ...editData });
+      setIsEditing(false);
+      toast.success("Modifications enregistrées");
+    } catch (error) {
+      console.error("Error saving edits:", error);
+      toast.error("Erreur lors de l'enregistrement");
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (!selectedAudit) return;
+    
+    // Simple CSV export as a fallback for Excel
+    const findings = selectedAudit.findings || [];
+    const headers = ["ID", "Clause", "Gravité", "Description", "Preuves", "Responsable", "Échéance"];
+    const rows = findings.map(f => [
+      selectedAudit.id.substring(0, 8),
+      f.clause || 'N/A',
+      f.severity || 'OBS',
+      f.description || '',
+      f.evidence || '',
+      f.responsible || '',
+      f.dueDate || ''
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rapport_Audit_${selectedAudit.companyName}_${selectedAudit.date}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Export Excel (CSV) généré");
   };
 
   if (loading) {
@@ -160,20 +286,53 @@ export default function Reports() {
             Retour à la liste
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handlePrint} className="gap-2">
-              <Printer className="w-4 h-4" />
-              Imprimer / PDF
-            </Button>
-            <Button className="gap-2">
-              <Download className="w-4 h-4" />
-              Exporter Excel
-            </Button>
+            {!showExportButtons ? (
+              <>
+                <Button variant="outline" onClick={() => setIsEditing(!isEditing)} className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
+                  {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                  {isEditing ? 'Annuler' : 'Modifier le brouillon'}
+                </Button>
+                {isEditing ? (
+                  <Button onClick={handleSaveEdit} className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-md">
+                    <Save className="w-4 h-4" />
+                    Enregistrer les modifications
+                  </Button>
+                ) : (
+                  <Button onClick={handleValidate} className="gap-2 bg-green-600 hover:bg-green-700 shadow-md">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Valider et générer le rapport final
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setShowExportButtons(false)} className="gap-2">
+                  <Edit className="w-4 h-4" />
+                  Revenir au mode édition
+                </Button>
+                <Button variant="outline" onClick={handlePrint} className="gap-2 border-primary/20">
+                  <Printer className="w-4 h-4" />
+                  Imprimer / PDF
+                </Button>
+                <Button className="gap-2" onClick={handleExportExcel}>
+                  <Download className="w-4 h-4" />
+                  Exporter Excel
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="bg-card border rounded-xl overflow-hidden shadow-sm print:shadow-none print:border-none max-w-5xl mx-auto">
           {/* Cover Page / Header */}
           <div className="p-12 border-b bg-muted/30 relative">
+            {!showExportButtons && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 print:hidden">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 px-4 py-1 font-bold">
+                  CONSULTATION BROUILLON HTML
+                </Badge>
+              </div>
+            )}
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <ShieldCheck className="w-32 h-32" />
             </div>
@@ -198,7 +357,7 @@ export default function Reports() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               <div className="space-y-6">
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Organisme Audité</Label>
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block">Organisme Audité</Label>
                   <div className="text-xl font-bold flex items-center gap-3">
                     <Building2 className="w-6 h-6 text-primary" />
                     {selectedAudit.companyName}
@@ -207,7 +366,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Équipe d'Audit</Label>
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block">Équipe d'Audit</Label>
                   <div className="text-lg font-semibold flex items-center gap-3">
                     <UserIcon className="w-6 h-6 text-primary" />
                     {selectedAudit.auditorName} (Auditeur Lead)
@@ -217,7 +376,7 @@ export default function Reports() {
 
               <div className="space-y-6">
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Période de l'Audit</Label>
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block">Période de l'Audit</Label>
                   <div className="text-lg font-semibold flex items-center gap-3">
                     <Calendar className="w-6 h-6 text-primary" />
                     {selectedAudit.date}
@@ -225,7 +384,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Statut du Rapport</Label>
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block">Statut du Rapport</Label>
                   <div className="mt-2">
                     <Badge variant={selectedAudit.status === 'completed' ? 'default' : 'secondary'} className="px-4 py-1">
                       {selectedAudit.status === 'completed' ? 'DÉFINITIF' : 'BROUILLON'}
@@ -246,9 +405,17 @@ export default function Reports() {
               <div className="space-y-6">
                 <div>
                   <Label className="text-xs font-bold text-primary uppercase mb-2">Objectifs de l'audit</Label>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {selectedAudit.objectives || "Évaluer la conformité du système de management par rapport aux exigences du référentiel, vérifier l'efficacité des processus et identifier les opportunités d'amélioration continue."}
-                  </p>
+                  {isEditing ? (
+                    <Textarea 
+                      value={editData.objectives || ''} 
+                      onChange={(e) => setEditData({...editData, objectives: e.target.value})}
+                      className="text-sm min-h-[100px]"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {selectedAudit.objectives || "Évaluer la conformité du système de management par rapport aux exigences du référentiel, vérifier l'efficacité des processus et identifier les opportunités d'amélioration continue."}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs font-bold text-primary uppercase mb-2">Critères d'audit</Label>
@@ -260,9 +427,17 @@ export default function Reports() {
               <div>
                 <Label className="text-xs font-bold text-primary uppercase mb-2">Périmètre d'application</Label>
                 <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
-                  <p className="text-sm italic">
-                    {selectedAudit.scope || "L'ensemble des activités liées à la conception, la production et la commercialisation des produits/services au sein du site audité."}
-                  </p>
+                  {isEditing ? (
+                    <Textarea 
+                      value={editData.scope || ''} 
+                      onChange={(e) => setEditData({...editData, scope: e.target.value})}
+                      className="text-sm min-h-[100px] bg-transparent border-none focus-visible:ring-0 p-0 italic"
+                    />
+                  ) : (
+                    <p className="text-sm italic">
+                      {selectedAudit.scope || "L'ensemble des activités liées à la conception, la production et la commercialisation des produits/services au sein du site audité."}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -279,10 +454,27 @@ export default function Reports() {
                 <div className="p-6 bg-card border rounded-xl shadow-sm">
                   <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Indice de Maturité</div>
                   <div className="flex items-end gap-2">
-                    <div className="text-5xl font-black text-primary">{selectedAudit.summary?.score || 0}</div>
-                    <div className="text-xl font-bold text-muted-foreground mb-1">%</div>
+                    {isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number" 
+                          value={editData.summary?.score || 0} 
+                          onChange={(e) => setEditData({
+                            ...editData, 
+                            summary: { ...editData.summary, score: parseInt(e.target.value) }
+                          })}
+                          className="w-20 text-2xl font-black text-primary"
+                        />
+                        <div className="text-xl font-bold text-muted-foreground">%</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-5xl font-black text-primary">{selectedAudit.summary?.score || 0}</div>
+                        <div className="text-xl font-bold text-muted-foreground mb-1">%</div>
+                      </>
+                    )}
                   </div>
-                  <Progress value={selectedAudit.summary?.score || 0} className="mt-6 h-3" />
+                  <Progress value={isEditing ? editData.summary?.score || 0 : selectedAudit.summary?.score || 0} className="mt-6 h-3" />
                   <p className="text-[10px] text-muted-foreground mt-4 text-center font-medium">
                     Niveau de conformité : <span className="text-primary">{selectedAudit.summary?.complianceLevel || 'Évaluation en cours'}</span>
                   </p>
@@ -307,9 +499,20 @@ export default function Reports() {
                 
                 <div className="space-y-3">
                   <Label className="text-xs font-bold text-primary uppercase">Conclusion Globale</Label>
-                  <div className="p-6 bg-card border rounded-xl text-sm leading-relaxed italic text-muted-foreground">
-                    "{selectedAudit.summary?.conclusion || "L'audit a démontré un système de management globalement mature, bien que des points d'attention subsistent sur certains processus clés."}"
-                  </div>
+                  {isEditing ? (
+                    <Textarea 
+                      value={editData.summary?.conclusion || ''} 
+                      onChange={(e) => setEditData({
+                        ...editData, 
+                        summary: { ...editData.summary, conclusion: e.target.value }
+                      })}
+                      className="text-sm min-h-[80px] italic"
+                    />
+                  ) : (
+                    <div className="p-6 bg-card border rounded-xl text-sm leading-relaxed italic text-muted-foreground">
+                      "{selectedAudit.summary?.conclusion || "L'audit a démontré un système de management globalement mature, bien que des points d'attention subsistent sur certains processus clés."}"
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -327,56 +530,112 @@ export default function Reports() {
                   <CheckCircle2 className="w-5 h-5" />
                   POINTS FORTS
                 </div>
-                <ul className="space-y-3">
-                  {strengths.length > 0 ? strengths.map((s, i) => (
-                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                      {s}
-                    </li>
-                  )) : (
-                    <>
-                      <li className="flex gap-3 text-sm text-muted-foreground">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    {(editData.strengths || []).map((s, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input 
+                          value={s} 
+                          onChange={(e) => {
+                            const newStrengths = [...(editData.strengths || [])];
+                            newStrengths[i] = e.target.value;
+                            setEditData({...editData, strengths: newStrengths});
+                          }}
+                          className="text-sm h-8"
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            const newStrengths = (editData.strengths || []).filter((_, idx) => idx !== i);
+                            setEditData({...editData, strengths: newStrengths});
+                          }}
+                          className="h-8 w-8 p-0 text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setEditData({...editData, strengths: [...(editData.strengths || []), ""]})}
+                      className="w-full h-8 text-xs border-dashed"
+                    >
+                      + Ajouter un point fort
+                    </Button>
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {strengths.length > 0 ? strengths.map((s, i) => (
+                      <li key={i} className="flex gap-3 text-sm text-muted-foreground">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                        Engagement fort de la Direction Générale dans la démarche qualité.
+                        {s}
                       </li>
-                      <li className="flex gap-3 text-sm text-muted-foreground">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                        Maîtrise documentaire rigoureuse et accessible à tous les collaborateurs.
-                      </li>
-                    </>
-                  )}
-                </ul>
+                    )) : (
+                      <li className="text-sm text-muted-foreground italic">Aucun point fort mentionné.</li>
+                    )}
+                  </ul>
+                )}
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-amber-600 font-bold mb-4">
                   <AlertTriangle className="w-5 h-5" />
                   AXES D'AMÉLIORATION
                 </div>
-                <ul className="space-y-3">
-                  {weaknesses.length > 0 ? weaknesses.map((w, i) => (
-                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                      {w}
-                    </li>
-                  )) : (
-                    <>
-                      <li className="flex gap-3 text-sm text-muted-foreground">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    {(editData.weaknesses || []).map((w, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input 
+                          value={w} 
+                          onChange={(e) => {
+                            const newWeaknesses = [...(editData.weaknesses || [])];
+                            newWeaknesses[i] = e.target.value;
+                            setEditData({...editData, weaknesses: newWeaknesses});
+                          }}
+                          className="text-sm h-8"
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            const newWeaknesses = (editData.weaknesses || []).filter((_, idx) => idx !== i);
+                            setEditData({...editData, weaknesses: newWeaknesses});
+                          }}
+                          className="h-8 w-8 p-0 text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setEditData({...editData, weaknesses: [...(editData.weaknesses || []), ""]})}
+                      className="w-full h-8 text-xs border-dashed"
+                    >
+                      + Ajouter un axe d'amélioration
+                    </Button>
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {weaknesses.length > 0 ? weaknesses.map((w, i) => (
+                      <li key={i} className="flex gap-3 text-sm text-muted-foreground">
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                        Optimisation du suivi des indicateurs de performance par processus.
+                        {w}
                       </li>
-                      <li className="flex gap-3 text-sm text-muted-foreground">
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                        Renforcement de la sensibilisation aux risques opérationnels.
-                      </li>
-                    </>
-                  )}
-                </ul>
+                    )) : (
+                      <li className="text-sm text-muted-foreground italic">Aucun axe d'amélioration mentionné.</li>
+                    )}
+                  </ul>
+                )}
               </div>
             </div>
           </div>
 
           {/* 4. Detailed Findings */}
-          <div className="p-12">
+          <div className="p-12 border-b">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">4</span>
               Détail des Constats d'Audit
@@ -385,7 +644,7 @@ export default function Reports() {
             {findings.length > 0 ? (
               <div className="space-y-8">
                 {findings.map((finding, idx) => (
-                  <div key={idx} className="border rounded-xl overflow-hidden shadow-sm">
+                  <div key={idx} className="border rounded-xl overflow-hidden shadow-sm break-inside-avoid">
                     <div className={cn(
                       "px-6 py-3 flex items-center justify-between border-b",
                       finding.severity === 'major' ? "bg-destructive/5" : 
@@ -404,11 +663,11 @@ export default function Reports() {
                     <div className="p-8 grid md:grid-cols-2 gap-12">
                       <div className="space-y-6">
                         <div>
-                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Description du constat</Label>
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2 block">Description du constat</Label>
                           <p className="text-sm leading-relaxed text-foreground">{finding.description}</p>
                         </div>
                         <div>
-                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Preuves objectives</Label>
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2 block">Preuves objectives</Label>
                           <div className="p-3 bg-muted/30 rounded border text-sm italic text-muted-foreground">
                             {finding.evidence || 'Aucune preuve spécifique mentionnée.'}
                           </div>
@@ -417,16 +676,16 @@ export default function Reports() {
                       <div className="space-y-6">
                         <div className="grid grid-cols-2 gap-6">
                           <div>
-                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Responsable Action</Label>
+                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2 block">Responsable Action</Label>
                             <p className="text-sm font-semibold">{finding.responsible || 'À définir'}</p>
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Délai de traitement</Label>
+                            <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2 block">Délai de traitement</Label>
                             <p className="text-sm font-semibold">{finding.dueDate || 'Immédiat'}</p>
                           </div>
                         </div>
                         <div className="p-4 bg-primary/[0.03] border border-primary/10 rounded-lg">
-                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2">Action Corrective / Préventive</Label>
+                          <Label className="text-[10px] uppercase text-primary font-bold tracking-widest mb-2 block">Action Corrective / Préventive</Label>
                           <p className="text-sm mt-1">{finding.correctiveAction || 'En attente du plan d\'action de l\'audité.'}</p>
                         </div>
                       </div>
@@ -443,6 +702,32 @@ export default function Reports() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* 5. Final Conclusion */}
+          <div className="p-12 bg-primary/[0.02]">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">5</span>
+              Conclusion de l'Auditeur
+            </h2>
+            <div className="space-y-6">
+              <div className="p-8 bg-card border-2 border-primary/20 rounded-2xl shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                <p className="text-lg leading-relaxed font-medium text-foreground italic">
+                  "{selectedAudit.summary?.conclusion || "Sur la base des preuves d'audit recueillies, l'équipe d'audit conclut que le système de management est conforme aux exigences de la norme et est mis en œuvre de manière efficace. Les opportunités d'amélioration identifiées permettront de renforcer la performance globale."}"
+                </p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-8 mt-8">
+                <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-100">
+                  <h4 className="text-sm font-bold text-emerald-700 mb-2 uppercase tracking-tight">Recommandation de Certification</h4>
+                  <p className="text-xs text-emerald-600">Favorable sous réserve de la levée des non-conformités mineures éventuelles.</p>
+                </div>
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                  <h4 className="text-sm font-bold text-blue-700 mb-2 uppercase tracking-tight">Prochain Audit Prévu</h4>
+                  <p className="text-xs text-blue-600">Audit de surveillance à prévoir dans 12 mois.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Footer / Signatures */}
@@ -484,6 +769,10 @@ export default function Reports() {
           <p className="text-muted-foreground">Consultez et exportez les rapports détaillés par entreprise.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleReset} className="gap-2 text-destructive hover:text-destructive">
+            <AlertTriangle className="w-4 h-4" />
+            Réinitialiser
+          </Button>
           <Button variant="outline" onClick={handlePrint} className="gap-2">
             <Printer className="w-4 h-4" />
             Imprimer la liste
@@ -596,11 +885,11 @@ export default function Reports() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="gap-2"
+                              className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => setSelectedAudit(audit)}
                             >
                               <FileText className="w-4 h-4" />
-                              Voir le rapport
+                              Consulter brouillon en html
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -622,16 +911,3 @@ export default function Reports() {
     </div>
   );
 }
-
-const Label = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <span className={cn("block font-medium", className)}>{children}</span>
-);
-
-const Progress = ({ value, className }: { value: number, className?: string }) => (
-  <div className={cn("h-2 w-full bg-muted rounded-full overflow-hidden", className)}>
-    <div 
-      className="h-full bg-primary transition-all duration-500" 
-      style={{ width: `${value}%` }} 
-    />
-  </div>
-);

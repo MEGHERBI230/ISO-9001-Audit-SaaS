@@ -54,9 +54,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { STANDARDS, RATING_LEGEND } from '@/src/constants';
 import { FindingStatus } from '@/src/types';
 import { cn } from '@/lib/utils';
-import { db } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, query } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, query, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { generateAuditChecklist } from '../services/GeminiService';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 export default function AuditWorkspace({ auditContext }: { auditContext?: any }) {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -64,7 +66,9 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
   const [selectedExigence, setSelectedExigence] = React.useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
   const [findings, setFindings] = React.useState<Record<string, any>>({});
+  const [aiStructure, setAiStructure] = React.useState<any[]>([]);
   const [currentFinding, setCurrentFinding] = React.useState({
     rating: 'C',
     riskLevel: 'low',
@@ -73,7 +77,34 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const activeStandard = STANDARDS.find(s => s.id === auditContext?.standardId) || STANDARDS[0];
-  const structure = activeStandard.structure;
+  const structure = aiStructure.length > 0 ? aiStructure : activeStandard.structure;
+
+  const handleGenerateAI = async () => {
+    if (!auditContext) return;
+    
+    setIsGenerating(true);
+    try {
+      const result = await generateAuditChecklist({
+        standard: activeStandard.name,
+        structure: auditContext.structure,
+        process: auditContext.process,
+        sector: auditContext.sector,
+        maturity: auditContext.maturity,
+        auditType: auditContext.auditType
+      });
+      
+      setAiStructure(result.clauses);
+      if (result.clauses.length > 0) {
+        setExpandedClauses([result.clauses[0].id]);
+      }
+      toast.success("Checklist générée intelligemment par l'IA");
+    } catch (error) {
+      console.error("AI Generation error:", error);
+      toast.error("Erreur lors de la génération par l'IA");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   React.useEffect(() => {
     if (structure.length > 0) {
@@ -82,7 +113,7 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
   }, [activeStandard.id]);
 
   React.useEffect(() => {
-    if (!auditContext?.id) return;
+    if (!auditContext?.id || !auth.currentUser) return;
 
     const q = query(collection(db, 'audits', auditContext.id, 'findings'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -96,7 +127,7 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
     });
 
     return () => unsubscribe();
-  }, [auditContext?.id]);
+  }, [auditContext?.id, auth.currentUser]);
 
   const handleSaveFinding = async () => {
     if (!auditContext || !selectedExigence) return;
@@ -165,6 +196,20 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 h-8 text-xs border-primary/30 text-primary hover:bg-primary/5"
+            onClick={handleGenerateAI}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            Générer avec IA
+          </Button>
           <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
             <History className="w-3.5 h-3.5" />
             Historique
@@ -291,15 +336,15 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                     {finding ? 'Éditer' : 'Enregistrer'}
                                   </Button>
                                 } />
-                                <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col pt-3" showCloseButton={false}>
-                              <DialogHeader className="pb-1 space-y-0">
+                                <DialogContent className="max-w-3xl max-h-[500px] !flex !flex-col p-0 overflow-hidden border shadow-2xl" showCloseButton={false}>
+                              <DialogHeader className="p-4 pb-2 border-b bg-muted/10">
                                 <DialogTitle className="text-lg leading-tight">Saisie du constat - {ex.number}</DialogTitle>
                                 <DialogDescription className="text-[10px] leading-tight opacity-80">{ex.title}</DialogDescription>
                               </DialogHeader>
                               
-                              <ScrollArea className="flex-1 pr-4">
-                                <div className="space-y-2.5 py-1">
-                                  <div className="space-y-0.5">
+                              <ScrollArea className="flex-1 overflow-y-auto px-4">
+                                <div className="space-y-3 py-4">
+                                  <div className="space-y-1">
                                     <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Question d'audit</Label>
                                     <div className="p-2 bg-muted/50 rounded-md text-xs italic border border-border/50">
                                       {ex.question}
@@ -307,13 +352,13 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                   </div>
 
                                   <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-1">
                                       <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Cotation</Label>
                                       <Select 
                                         defaultValue="C" 
                                         onValueChange={(v) => setCurrentFinding({...currentFinding, rating: v})}
                                       >
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full h-8 text-xs">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="min-w-[200px]">
@@ -328,13 +373,13 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-1">
                                       <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Niveau de risque</Label>
                                       <Select 
                                         defaultValue="low"
                                         onValueChange={(v) => setCurrentFinding({...currentFinding, riskLevel: v})}
                                       >
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full h-8 text-xs">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="min-w-[150px]">
@@ -346,17 +391,32 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                     </div>
                                   </div>
 
-                                  <div className="space-y-0.5">
+                                  <div className="space-y-1">
                                     <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Constat / Preuves objectives</Label>
                                     <Textarea 
                                       placeholder="Décrivez vos observations, les entretiens réalisés et l'échantillonnage..." 
-                                      className="min-h-[70px] text-xs resize-none"
+                                      className="min-h-[60px] text-xs resize-none"
                                       value={currentFinding.comment}
                                       onChange={(e) => setCurrentFinding({...currentFinding, comment: e.target.value})}
                                     />
                                   </div>
 
-                                  <div className="space-y-0.5">
+                                  {ex.risk && (
+                                    <div className="p-2 bg-destructive/5 border border-destructive/10 rounded-md">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <AlertCircle className="w-3 h-3 text-destructive" />
+                                        <span className="text-[10px] font-bold text-destructive uppercase tracking-wider">Risque associé</span>
+                                        {ex.criticality && (
+                                          <Badge variant="outline" className="text-[8px] h-4 border-destructive/30 text-destructive">
+                                            {ex.criticality.toUpperCase()}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-[10px] text-destructive/80 italic">{ex.risk}</p>
+                                    </div>
+                                  )}
+
+                                  <div className="space-y-1">
                                     <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Preuves attendues</Label>
                                     <ul className="text-[10px] text-muted-foreground list-disc pl-4 space-y-0">
                                       {ex.expectedEvidence.map((e: string, i: number) => (
@@ -365,7 +425,7 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                     </ul>
                                   </div>
 
-                                  <div className="space-y-1">
+                                  <div className="space-y-2">
                                     <Label className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Gestion des preuves (Fichiers)</Label>
                                     <div 
                                       onDragOver={handleDragOver}
@@ -416,12 +476,12 @@ export default function AuditWorkspace({ auditContext }: { auditContext?: any })
                                 </div>
                               </ScrollArea>
 
-                              <DialogFooter className="py-3 px-4">
-                                <DialogClose render={<Button variant="outline" size="sm" />}>
+                              <DialogFooter className="!m-0 flex justify-end gap-3 p-4 border-t bg-muted/30">
+                                <DialogClose render={<Button variant="outline" size="sm" className="px-6" />}>
                                   Annuler
                                 </DialogClose>
-                                <DialogClose render={<Button size="sm" onClick={handleSaveFinding} />}>
-                                  Enregistrer le constat
+                                <DialogClose render={<Button size="sm" className="px-6" onClick={handleSaveFinding} />}>
+                                  Valider
                                 </DialogClose>
                               </DialogFooter>
                             </DialogContent>

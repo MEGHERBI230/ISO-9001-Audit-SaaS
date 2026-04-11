@@ -20,14 +20,18 @@ service cloud.firestore {
     function isValidAudit(data) {
       return data.companyName is string && data.companyName.size() > 0 && data.companyName.size() < 200 &&
              data.auditorName is string && data.auditorName.size() > 0 &&
-             data.createdBy == request.auth.uid;
+             data.createdBy == request.auth.uid &&
+             (!('objectives' in data) || data.objectives is string) &&
+             (!('scope' in data) || data.scope is string) &&
+             (!('strengths' in data) || data.strengths is list) &&
+             (!('weaknesses' in data) || data.weaknesses is list);
     }
 
     function isValidFinding(data) {
       return data.auditId is string &&
              data.requirementId is string &&
              data.rating is string &&
-             data.riskLevel in ['low', 'medium', 'high'];
+             (!('riskLevel' in data) || data.riskLevel in ['low', 'medium', 'high']);
     }
 
     // ===============================================================
@@ -41,8 +45,8 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isDocOwner();
 
       match /findings/{findingId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated() && isValidFinding(request.resource.data);
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/audits/$(auditId)).data.createdBy == request.auth.uid;
+        allow write: if isAuthenticated() && get(/databases/$(database)/documents/audits/$(auditId)).data.createdBy == request.auth.uid && isValidFinding(request.resource.data);
       }
     }
     

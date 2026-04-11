@@ -25,12 +25,14 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle2, 
   AlertTriangle, 
   Clock, 
   TrendingUp,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -46,8 +48,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { db, auth } from '../lib/firebase';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { STANDARDS } from '../constants';
+import { toast } from 'sonner';
 import { 
   Select, 
   SelectContent, 
@@ -86,99 +89,253 @@ export default function Dashboard({ onStartAudit }: { onStartAudit?: (data: any)
 
     const q = query(collection(db, 'audits'), where('createdBy', '==', auth.currentUser.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStats(prev => ({ ...prev, totalAudits: snapshot.size }));
+      const auditDocs = snapshot.docs.map(doc => doc.data());
+      const total = snapshot.size;
+      
+      let totalScore = 0;
+      let completedCount = 0;
+      
+      auditDocs.forEach(audit => {
+        if (audit.status === 'completed') {
+          totalScore += (audit.summary?.score || 0);
+          completedCount++;
+        }
+      });
+
+      const avgMaturity = completedCount > 0 ? Math.round(totalScore / completedCount) : 0;
+
+      setStats(prev => ({ 
+        ...prev, 
+        totalAudits: total,
+        maturityScore: avgMaturity
+      }));
     });
 
-    return () => unsubscribe();
+    // Fetch NC stats
+    const qNC = query(collection(db, 'non-conformities'), where('createdBy', '==', auth.currentUser.uid));
+    const unsubscribeNC = onSnapshot(qNC, (snapshot) => {
+      const ncDocs = snapshot.docs.map(doc => doc.data());
+      const open = ncDocs.filter(nc => nc.status === 'open' || nc.status === 'in-progress').length;
+      const closed = ncDocs.filter(nc => nc.status === 'verified' || nc.status === 'closed').length;
+      const total = ncDocs.length;
+      const rate = total > 0 ? Math.round((closed / total) * 100) : 0;
+
+      setStats(prev => ({
+        ...prev,
+        openNCs: open,
+        closureRate: rate
+      }));
+
+      // Update distribution chart
+      const dist = [
+        { name: 'Majeures', value: ncDocs.filter(nc => nc.type === 'NCM').length, color: '#ef4444' },
+        { name: 'Mineures', value: ncDocs.filter(nc => nc.type === 'NCm').length, color: '#f97316' },
+        { name: 'OBS', value: ncDocs.filter(nc => nc.type === 'OBS').length, color: '#fbbf24' },
+        { name: 'OA', value: ncDocs.filter(nc => nc.type === 'OA').length, color: '#22c55e' },
+      ];
+      setNcDistribution(dist);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeNC();
+    };
   }, []);
 
   const [newAuditData, setNewAuditData] = React.useState({
     companyName: '',
-    structure: '',
+    structure: 'Direction Qualité',
     auditorName: '',
     standardId: 'iso9001',
+    sector: 'Industrie Automobile',
+    maturity: 'intermédiaire',
+    auditType: 'interne',
     date: new Date().toISOString().split('T')[0]
   });
+
+  const handleReset = async () => {
+    if (!auth.currentUser) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer TOUTES vos données (audits et non-conformités) ? Cette action est irréversible.")) return;
+
+    try {
+      const auditSnap = await getDocs(query(collection(db, 'audits'), where('createdBy', '==', auth.currentUser.uid)));
+      const deleteAudits = auditSnap.docs.map(d => deleteDoc(doc(db, 'audits', d.id)));
+      
+      const ncSnap = await getDocs(query(collection(db, 'non-conformities'), where('createdBy', '==', auth.currentUser.uid)));
+      const deleteNCs = ncSnap.docs.map(d => deleteDoc(doc(db, 'non-conformities', d.id)));
+
+      await Promise.all([...deleteAudits, ...deleteNCs]);
+      toast.success("Données réinitialisées avec succès");
+    } catch (error) {
+      console.error("Error resetting data:", error);
+      toast.error("Erreur lors de la réinitialisation");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Tableau de bord Qualité</h1>
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2 text-destructive hover:text-destructive border-destructive/20">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Remise à zéro
+          </Button>
           <Dialog>
-            <DialogTrigger render={<Button className="gap-2">
+            <DialogTrigger render={<Button className="gap-2" />}>
               <Plus className="h-4 w-4" />
               Nouvel Audit
-            </Button>} />
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Créer un nouvel audit</DialogTitle>
-                <DialogDescription>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[550px] max-h-[500px] !flex !flex-col p-0 overflow-hidden border shadow-2xl">
+              <DialogHeader className="p-4 pb-2 border-b bg-muted/10">
+                <DialogTitle className="text-lg">Créer un nouvel audit</DialogTitle>
+                <DialogDescription className="text-xs">
                   Saisissez les informations de base pour commencer votre audit.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="company">Nom de l'entreprise</Label>
-                  <Input 
-                    id="company" 
-                    placeholder="Ex: Entreprise SAS" 
-                    value={newAuditData.companyName}
-                    onChange={(e) => setNewAuditData({...newAuditData, companyName: e.target.value})}
-                  />
+              <ScrollArea className="flex-1 overflow-y-auto">
+                <div className="p-4 space-y-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="company" className="text-xs font-semibold">Nom de l'entreprise</Label>
+                    <Input 
+                      id="company" 
+                      placeholder="Ex: Entreprise SAS" 
+                      className="h-8 text-sm"
+                      value={newAuditData.companyName}
+                      onChange={(e) => setNewAuditData({...newAuditData, companyName: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="structure" className="text-xs font-semibold">Structure / Département</Label>
+                      <Select 
+                        value={newAuditData.structure} 
+                        onValueChange={(v) => setNewAuditData({...newAuditData, structure: v})}
+                      >
+                        <SelectTrigger id="structure" className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Direction Générale">Direction Générale</SelectItem>
+                          <SelectItem value="Direction Qualité">Direction Qualité</SelectItem>
+                          <SelectItem value="Production">Production</SelectItem>
+                          <SelectItem value="Maintenance">Maintenance</SelectItem>
+                          <SelectItem value="Logistique">Logistique</SelectItem>
+                          <SelectItem value="Achats">Achats</SelectItem>
+                          <SelectItem value="RH / Formation">RH / Formation</SelectItem>
+                          <SelectItem value="HSE">HSE</SelectItem>
+                          <SelectItem value="Laboratoire / Métrologie">Laboratoire / Métrologie</SelectItem>
+                          <SelectItem value="Commercial / Ventes">Commercial / Ventes</SelectItem>
+                          <SelectItem value="Conception / R&D">Conception / R&D</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="sector" className="text-xs font-semibold">Secteur d'activité</Label>
+                      <Select 
+                        value={newAuditData.sector} 
+                        onValueChange={(v) => setNewAuditData({...newAuditData, sector: v})}
+                      >
+                        <SelectTrigger id="sector" className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Industrie Automobile">Industrie Automobile</SelectItem>
+                          <SelectItem value="Assemblage Véhicules">Assemblage Véhicules</SelectItem>
+                          <SelectItem value="Sous-traitance Automobile">Sous-traitance Automobile</SelectItem>
+                          <SelectItem value="Usinage / Soudage">Usinage / Soudage</SelectItem>
+                          <SelectItem value="Industrie Générale">Industrie Générale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="maturity" className="text-xs font-semibold">Niveau de maturité</Label>
+                      <Select 
+                        value={newAuditData.maturity} 
+                        onValueChange={(v) => setNewAuditData({...newAuditData, maturity: v})}
+                      >
+                        <SelectTrigger id="maturity" className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="débutant">Débutant</SelectItem>
+                          <SelectItem value="intermédiaire">Intermédiaire</SelectItem>
+                          <SelectItem value="avancé">Avancé</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="auditType" className="text-xs font-semibold">Type d'audit</Label>
+                      <Select 
+                        value={newAuditData.auditType} 
+                        onValueChange={(v) => setNewAuditData({...newAuditData, auditType: v})}
+                      >
+                        <SelectTrigger id="auditType" className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="interne">Interne</SelectItem>
+                          <SelectItem value="externe">Externe / Certification</SelectItem>
+                          <SelectItem value="fournisseur">Fournisseur</SelectItem>
+                          <SelectItem value="conformité">Conformité / Réglementaire</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="auditor" className="text-xs font-semibold">Auditeur</Label>
+                    <Input 
+                      id="auditor" 
+                      placeholder="Votre nom" 
+                      className="h-8 text-sm"
+                      value={newAuditData.auditorName}
+                      onChange={(e) => setNewAuditData({...newAuditData, auditorName: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="standard" className="text-xs font-semibold">Référentiel / Norme</Label>
+                    <Select 
+                      value={newAuditData.standardId} 
+                      onValueChange={(v) => setNewAuditData({...newAuditData, standardId: v})}
+                    >
+                      <SelectTrigger id="standard" className="h-8 text-sm">
+                        <SelectValue placeholder="Sélectionnez une norme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STANDARDS.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="date" className="text-xs font-semibold">Date de l'audit</Label>
+                    <Input 
+                      id="date" 
+                      type="date" 
+                      className="h-8 text-sm"
+                      value={newAuditData.date}
+                      onChange={(e) => setNewAuditData({...newAuditData, date: e.target.value})}
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="structure">Structure / Département</Label>
-                  <Input 
-                    id="structure" 
-                    placeholder="Ex: Direction Générale" 
-                    value={newAuditData.structure}
-                    onChange={(e) => setNewAuditData({...newAuditData, structure: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="auditor">Auditeur</Label>
-                  <Input 
-                    id="auditor" 
-                    placeholder="Votre nom" 
-                    value={newAuditData.auditorName}
-                    onChange={(e) => setNewAuditData({...newAuditData, auditorName: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="standard">Référentiel / Norme</Label>
-                  <Select 
-                    value={newAuditData.standardId} 
-                    onValueChange={(v) => setNewAuditData({...newAuditData, standardId: v})}
-                  >
-                    <SelectTrigger id="standard">
-                      <SelectValue placeholder="Sélectionnez une norme" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STANDARDS.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="date">Date de l'audit</Label>
-                  <Input 
-                    id="date" 
-                    type="date" 
-                    value={newAuditData.date}
-                    onChange={(e) => setNewAuditData({...newAuditData, date: e.target.value})}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose render={<Button variant="outline">Annuler</Button>} />
+              </ScrollArea>
+              <DialogFooter className="!m-0 flex justify-end gap-3 p-4 border-t bg-muted/30">
+                <DialogClose render={<Button variant="outline" size="sm" className="px-6" />}>
+                  Annuler
+                </DialogClose>
                 <DialogClose render={
                   <Button 
+                    size="sm"
+                    className="px-6"
                     onClick={() => onStartAudit?.(newAuditData)}
                     disabled={!newAuditData.companyName || !newAuditData.auditorName}
                   >
-                    Démarrer l'audit
+                    Valider
                   </Button>
                 } />
               </DialogFooter>
